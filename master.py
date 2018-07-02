@@ -1,5 +1,6 @@
 import os
 import pathlib as pl
+import json
 
 # default subdirectory names
 
@@ -25,10 +26,24 @@ class GPRMaster:
         # make directories if they do not already exist:
         self.fdir.mkdir(exist_ok=True)
         self.dumpdir.mkdir(exist_ok=True)
+
+    def dumpmaker(self, dumpname, keys, values):
+        """
+        Generic json dump creater.
+        """
+        os.chdir(self.dumpdir)
+        dumpdict = dict(zip(keys, values))
+        with open(dumpname + '.json', 'w+') as f:
+            json.dump(dumpdict, f)
+            f.close()
+        print(
+            '\'' + dumpname + '.json\' dumped in\'',
+            str(self.dumpdir) + '\''
+        )
+        os.chdir(self.olddir)
+        return True
+
         
-
-
-
 class MasterGrabber(GPRMaster):
     """
     """
@@ -36,7 +51,6 @@ class MasterGrabber(GPRMaster):
         super().__init__()
         
     
-
 class MasterPrimer(GPRMaster):
     """
     """

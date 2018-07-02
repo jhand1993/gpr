@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import tabulate as tb
 import requests
-from master import 
+from master import MasterGrabber
 
 
 class OscConnection:
@@ -225,11 +225,11 @@ class SpectraGrabber(MasterGrabber):
     def __init__(self, specdatadir):
         super().__init__()
         self.specdatadir = self.fdir / specdatadir
+        self.specdatadir.mkdir(exist_ok=True)
         self.filelist = []
         self.jsonname_fname_spec = 'filename-specObjID'
         self.jsonname_fname_obj = 'filename-objID'
         self.df = pd.DataFrame()
-        self.root = 'https://data.sdss.org/sas/dr14/'
         try:
             # try to make pandas dataframe from file 'fname'
             os.chdir(self.fdir)
@@ -251,98 +251,6 @@ class SpectraGrabber(MasterGrabber):
         print(self.df)
         return self.df
 
-    def spectra_grabber(self, jsondump=True):
-        """
-        Grabs spectra data from SDSS DR14 from given datafram df.  df should
-        have 'mjd', 'plate', and 'fiberID' information. 'jsondump' creates
-        and stores dictionaries of specObjID:objID pairs and
-        specObjID:fits-file pairs for use creating spectra table for FAST++
-        during priming.
-        """
-        specObjIDlist = []
-        objIDlist = []
-        fitsnamelist = []
-        os.chdir(self.fdir)
-        try:
-            # try and grab the necessary columns from 'df'
-            mjds = np.array(self.df['mjd'], dtype=str)
-            plates = np.array(self.df['plate'], dtype=str)
-            fiberIDs = np.array(self.df['fiberID'], dtype=str)
-            if jsondump:
-                specObjIDlist = list(self.df['specObjID'])
-                objIDlist = list(self.df['objID'])
-        except KeyError as k:
-            print(k)
-            print('Make sure downloaded data contains required columns.')
-            return False
-        except:
-            raise
-        rowcount = self.df.shape[0]
-        try:
-            os.chdir(self.specdatadir)
-            if len(glob.glob('*.fits')) == rowcount:
-                print(
-                    'Fits files already downloaded in directory ' +
-                    str(self.specdatadir)
-                )
-                self.filelist = glob.glob('*.fits')
-                os.chdir(self.olddir)
-                return True
-            for row in range(rowcount):
-                # run through the rows of the df, construct file name,
-                # determine if spectra is from legacy or from eboss,
-                # and download file via requests.get() after constructing URL.
-                # See http://www.sdss.org/dr14/data_access/bulk/ for more
-                # information.
-                plate = plates[row]
-                mjd = mjds[row]
-                fiberID = fiberIDs[row]
-                if int(plate) < 3006:
-                    # for older spectra
-                    subroot = 'sdss/spectro/redux/26/spectra/'
-                else:
-                    # for newer spectra
-                    subroot = 'eboss/spectro/redux/v5_10_0/spectra/'
-                plate = str(plate)
-                if len(plate) < 4:
-                    # 'plate' is stored as an int, but the 'plate' portion of
-                    # the fits file name is a string of length 4, so zeroes may
-                    # need to be added to 'plate'.
-                    while len(plate) < 4:
-                        plate = '0' + plate
-                if len(fiberID) < 4:
-                    # 'fiberID' is stored as an int, but the 'fiberID' portion
-                    # of the fits file name is a string of length 4, so zeroes
-                    # may need to be added to 'fiberID'.
-                    while len(fiberID) < 4:
-                        fiberID = '0' + fiberID
-                url = self.root + subroot + plate + '/'
-                fitsname = 'spec-' + plate + '-' + mjd + '-' +
-                fiberID + '.fits'
-                r = requests.get(
-                    url + fitsname, allow_redirects=True, stream=True
-                    )
-                with open(fitsname, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f)
-                fitsnamelist.append(fitsname)
-            self.filelist = fitsnamelist
-            print(self.filelist)
-            if jsondump:
-                os.chdir(self.fdir + '/dumps')
-                dict1 = dict(zip(fitsnamelist, specObjIDlist))
-                with open(self.jsonname_fname_spec + '.json', 'w+') as f:
-                    json.dump(dict1, f)
-                    f.close()
-                dict2 = dict(zip(fitsnamelist, objIDlist))
-                with open(self.jsonname_fname_obj + '.json', 'w+') as f:
-                    json.dump(dict2, f)
-                    f.close()
-            return True
-        except:
-            raise
-        finally:
-            os.chdir(self.olddir)
-
 
 class SdssSpectraGrabber(SpectraGrabber):
     """
@@ -350,12 +258,11 @@ class SdssSpectraGrabber(SpectraGrabber):
     SDSS SAS.  Can be used to grab spectra from mjd, place, fiberID information
     from a valid data file/table.
     """
-    def __init__(self, root):
+    def __init__(self, specdatadir, root):
         super().__init__(specdatadir)
-        self.specdatadir = self.fdir / specdatadir
-        self.root = 'https://data.sdss.org/sas/dr14/'
+        self.root = root
 
-    def sdss_spectra_grabber(self, jsondump=True):
+    def sdss_spectra_grabber(self):
         """
         Grabs spectra data from SDSS DR14 from given datafram df.  df should
         have 'mjd', 'plate', and 'fiberID' information. 'jsondump' creates
@@ -365,16 +272,15 @@ class SdssSpectraGrabber(SpectraGrabber):
         """
         specObjIDlist = []
         objIDlist = []
-        fitsnamelist = []
+        specnamelist = []
         os.chdir(self.fdir)
         try:
             # try and grab the necessary columns from 'df'
             mjds = np.array(self.df['mjd'], dtype=str)
             plates = np.array(self.df['plate'], dtype=str)
             fiberIDs = np.array(self.df['fiberID'], dtype=str)
-            if jsondump:
-                specObjIDlist = list(self.df['specObjID'])
-                objIDlist = list(self.df['objID'])
+            specObjIDlist = list(self.df['specObjID'])
+            objIDlist = list(self.df['objID'])
         except KeyError as k:
             print(k)
             print('Make sure downloaded data contains required columns.')
@@ -384,7 +290,8 @@ class SdssSpectraGrabber(SpectraGrabber):
         rowcount = self.df.shape[0]
         try:
             os.chdir(self.specdatadir)
-            if len(glob.glob('*.fits')) == rowcount:
+            localspecdata = glob.glob('*.fits')
+            if len(localspecdata) == rowcount:
                 print(
                     'Fits files already downloaded in directory ' +
                     str(self.specdatadir)
@@ -392,6 +299,10 @@ class SdssSpectraGrabber(SpectraGrabber):
                 self.filelist = glob.glob('*.fits')
                 os.chdir(self.olddir)
                 return True
+            else:
+                print(
+                    'Downloading spectra from \'' + self.root + '\'...'
+                )
             for row in range(rowcount):
                 # run through the rows of the df, construct file name,
                 # determine if spectra is from legacy or from eboss,
@@ -421,28 +332,24 @@ class SdssSpectraGrabber(SpectraGrabber):
                     while len(fiberID) < 4:
                         fiberID = '0' + fiberID
                 url = self.root + subroot + plate + '/'
-                fitsname = 'spec-' + plate + '-' + mjd + '-' +
-                fiberID + '.fits'
-                r = requests.get(
-                    url + fitsname, allow_redirects=True, stream=True
-                    )
-                with open(fitsname, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f)
-                fitsnamelist.append(fitsname)
-            self.filelist = fitsnamelist
-            print(self.filelist)
-            if jsondump:
-                os.chdir(self.fdir + '/dumps')
-                dict1 = dict(zip(fitsnamelist, specObjIDlist))
-                with open(self.jsonname_fname_spec + '.json', 'w+') as f:
-                    json.dump(dict1, f)
-                    f.close()
-                dict2 = dict(zip(fitsnamelist, objIDlist))
-                with open(self.jsonname_fname_obj + '.json', 'w+') as f:
-                    json.dump(dict2, f)
-                    f.close()
+                specname = 'spec-' + plate + '-' + mjd + '-' + fiberID + '.fits'
+                if specname in localspecdata:
+                    print('\'' + specname + '\' already downloaded.')
+                else:
+                    print('Downloading \'' + specname + '\'...')
+                    r = requests.get(
+                        url + specname, allow_redirects=True, stream=True
+                        )
+                    with open(specname, 'wb') as f:
+                        shutil.copyfileobj(r.raw, f)
+                specnamelist.append(specname)
+            self.filelist = specnamelist
+            print('Done.')
+            self.dumpmaker(self.jsonname_fname_spec, specnamelist, specObjIDlist)
+            self.dumpmaker(self.jsonname_fname_spec, specnamelist, objIDlist)
             return True
-        except:
+        except Exception as e:
+            print(str(e))
             raise
         finally:
             os.chdir(self.olddir)

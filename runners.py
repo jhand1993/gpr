@@ -10,40 +10,51 @@ import primers
 import grabbers
 from master import MasterRunner
 
+sdssroot = 'https://data.sdss.org/sas/dr14/'
+sdssspecdatadir = 'specdata'
+
 
 class FastppRunner(MasterRunner):
     """
     Contains methods to run FAST++
     """
     def __init__(self):
-        super().init()
+        super().__init__()
+        self.grabber = grabbers.SdssSpectraGrabber(
+            specdatadir=sdssspecdatadir, 
+            root=sdssroot
+            )
+        self.primer = primers.FastppPrimer(
+            specdatadir=sdssspecdatadir
+            )
+        # ftr : files to run
+        self.ftrlist = self.grabber.filelist
 
-    def fastpp_runnerloop(self):
+    def fastpp_runner(self, **kwargs):
         """
-        Used to loop through 
-        """
+        Nested function used to loop through all the files.  This will
+        be rewritten with **kwargs for each parameter in .param file:
 
-        grabber = grabbers.SpectraGrabber(fname, fdir)
-        grabber.spectra_grabber()
-        grabber.fname
-        primer = primers.FastPlusPlusPrimer(fname, fdir, binsize=10)
-        primer.spec_looper()
-        primer.cat_maker(ignorphot=True)
-        fitslist = grabber.filelist
-        paramdata = np.loadtxt(fname + '.param', dtype=str)
+        **kwargs={param1: value1, param2: value2, ...}
+        """
+        self.grabber.sdss_spectra_grabber()
+        self.primer.spec_looper(specdatadir=sdssspecdatadir)
+        self.primer.cat_maker(ignorphot=True)
+        os.chdir(self.fdir)
+        # load .param data used by FAST++
+        paramdata = np.loadtxt(self.fname + '.param', dtype=str)
+        # grab .paramdata parameter:value pairs in dictionary:
         paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
-
-
-        def fastpp_runner(self, fits, param):
-            """
-            Nested function used to loop through all the files.
-            """
-            os.chdir(self.fdir)
-            fullname = fname + '-' + fits.split('.')[0]
+        for f in self.ftrlist:
+            # Need to remove file extension:
+            fullname = self.fname + '-' + f.split('.')[0]
+            if kwargs:
+                for key, value in kwargs.items():
+                    paramdatadict[key] = value
             paramdatadict['CATALOG'] = fullname
             with open(fullname + '.param', 'w+') as f:
-                for key in list(paramdatadict.keys()):
-                    value = paramdatadict[key]
+                for key, value in paramdatadict.items():
+                    # value = paramdatadict[key]
                     newline = key + ' = ' + value + '\n'
                     f.write(newline)
                 f.close()
@@ -52,16 +63,14 @@ class FastppRunner(MasterRunner):
                 olddir + '/' + fname + '.translate', fullname + '.translate'
                 )
             cmd = 'fast++ ' + fullname + '.param'
-            # shell=True is not secure at all, but will work for now
+            shell=True is not secure at all, but will work for now
             process = subprocess.Popen(cmd, shell=True) 
             stout, sterr = process.communicate()
             process.wait()
-            os.chdir(self.olddir)
-        for f in fitslist:
-            fastpp_runner(f, paramdata)
-        grouper = primers.FastppFoutGrouper(foutdir='')
+        os.chdir(self.olddir)
+        grouper = primers.FastppFoutGrouper(foutdir='fout')
         grouper.regrouper()
         return True
 
-    fastpp_runnerloop()
-    
+x = FastppRunner()
+x.fastpp_runner()

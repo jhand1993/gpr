@@ -9,6 +9,7 @@ requests = "*"
 tables = "*"
 pandas = "*"
 astropy = "*"
+tabulate = "*"
 
 [dev-packages]
 

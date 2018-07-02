@@ -11,8 +11,8 @@ from master import MasterPrimer
 
 class SpectraData:
     """
-    Will likely rewrite this to be inherited from astropy.io.fits.Fits class,
-    but this works for now.
+    Will likely rewrite this to be inherited from astropy.io.fits.Fits
+    class, but this works for now.
     """
     def __init__(self, filename):
         self.filename = filename
@@ -30,16 +30,14 @@ class SpectraData:
             raise
 
 
-class FastPlusPlusPrimer(MasterPrimer):
+class FastppPrimer(MasterPrimer):
     """
     This class instantiates priming methods for a given input datafile
     containing the necessary columns to creat a .cat file. It can also
     create the .spec files from respective fits files if said files
     have already been grabbed.
     """
-    def __init__(
-        binsize=10, lambdastep=0.5, lambdarange=(3800., 9000.), specdatadir
-    ):
+    def __init__(self, specdatadir, binsize=10, lambdastep=0.5, lambdarange=(3800., 9000.)):
         super().__init__()
         self.specdatadir = self.fdir / specdatadir
         # create 'spedatadir' if it does not exist
@@ -155,16 +153,18 @@ class FastPlusPlusPrimer(MasterPrimer):
             )
         return fullname, objID
 
-    def spec_looper(self, jsondump=True):
+    def spec_looper(self, specdatadir):
         """
         Creates .spec files for each fits file in attribute 'self.filelist'.
         If True, 'jsondump' creates a .json file with objID as keys and full
         .spec file name as values.
         """
+        self.specdatadir = self.fdir / specdatadir
+        self.specdatadir.mkdir(exist_ok=True)
+        self.json_fullname_obj = 'fullname-objID'
         if not self.spectralist:
-            # probably isn't populated, but no need to rerun this if for some
-            # reason it is...
-            os.chdir(self.fdir + '/fitsfiles')
+            # probably isn't populated, but no need to rerun this if it is.
+            os.chdir(self.specdatadir)
             self.filelist = glob.glob('*.fits')
             # this is the slowest part of the pipeline by far:
             self.spectralist = [SpectraData(f) for f in self.filelist]
@@ -172,16 +172,12 @@ class FastPlusPlusPrimer(MasterPrimer):
         f_fullnamelist = []
         f_objIDlist = []
         for f in self.spectralist:
+            # Not sure why I used f here, but whatever.
             f_fullname, f_objID = self.spec_maker(f)
             f_fullnamelist.append(f_fullname)
             f_objIDlist.append(f_objID)
-        if jsondump:
-            os.chdir(self.dumpdir)
-            dump = dict(zip(f_fullnamelist, f_objIDlist))
-            dumpname = 'fullname-objID'
-            with open(dumpname + '.json', 'w+') as f:
-                json.dump(dump, f)
-                f.close()
+        # make a dump for fullnames and object ID:
+        self.dumpmaker(self.json_fullname_obj, f_fullnamelist, f_objIDlist)
         os.chdir(self.olddir)
         return f_fullnamelist
 
@@ -193,12 +189,13 @@ class FastPlusPlusPrimer(MasterPrimer):
         """
         os.chdir(self.fdir)
 
-        # define function to convert nanomaggies to microjanksys.
-        def nmtoerg(x):
+        def nm_to_mj(x):
+            # converts nanomaggies to microjanksys.
             return x * 3.631
         df = pd.read_csv(self.fname + '.csv', header=0)
        
-        # Break up the dataframe into different components to be reorganized
+        # Break up the dataframe into different components 
+        # to be reorganized
         err_df = df.filter(like='E_', axis=1)
         id_df = df.filter(items=['objID'], axis=1)
         flux_df = df.filter(like='F_', axis=1)
@@ -207,8 +204,8 @@ class FastPlusPlusPrimer(MasterPrimer):
         id_df = id_df.rename(columns={'objID': '#ID'})
 
         err_df.loc[:, :] = 1 / np.sqrt(err_df.loc[:, :])
-        err_df.loc[:, :] = nmtoerg(err_df.loc[:, :])
-        flux_df.loc[:, :] = nmtoerg(flux_df.loc[:, :])
+        err_df.loc[:, :] = nm_to_mj(err_df.loc[:, :])
+        flux_df.loc[:, :] = nm_to_mj(flux_df.loc[:, :])
 
         if not ignorphot:
             df = pd.concat([id_df, specid_df, flux_df, err_df, z_df], axis=1)
@@ -224,7 +221,7 @@ class FastPlusPlusPrimer(MasterPrimer):
 class FastppFoutGrouper(MasterPrimer):
     """
     This is an odd class as it primes data after the application
-    FAST++ has been ran. Nevertheless it is a primer and it is
+    FAST++ has been ran. Nevertheless it is it's own primer as it is
     functionally separate from the other FAST++ primer class.
     """
     def __init__(self, foutdir):
