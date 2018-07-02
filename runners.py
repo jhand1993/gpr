@@ -1,10 +1,7 @@
-import json
-import glob
 import shutil
 import subprocess
 import os
 
-import pandas as pd
 import numpy as np 
 import primers
 import grabbers
