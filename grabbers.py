@@ -349,7 +349,6 @@ class SdssSpectraGrabber(SpectraGrabber):
                             shutil.copyfileobj(r.raw, f)
                     specnamelist.append(specname)
                 self.filelist = specnamelist
-                print(self.filelist)
                 print('Done.')
                 self.dumpmaker(self.fname_spec_jdump, specnamelist, specObjIDlist)
                 self.dumpmaker(self.fname_obj_jdump, specnamelist, objIDlist)

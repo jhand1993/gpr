@@ -194,12 +194,7 @@ class FastppPrimer(MasterPrimer):
         to include the required 'F_' and 'E_' prefixes for running FAST++.
         """
         os.chdir(self.fdir)
-
-        def nm_to_mj(x):
-            # converts nanomaggies to microjanksys.
-            return x * 3.631
         df = pd.read_csv(self.fname + '.csv', header=0)
-       
         # Break up the dataframe into different components 
         # to be reorganized
         err_df = df.filter(like='E_', axis=1)
@@ -210,8 +205,8 @@ class FastppPrimer(MasterPrimer):
         id_df = id_df.rename(columns={'objID': '#ID'})
 
         err_df.loc[:, :] = 1 / np.sqrt(err_df.loc[:, :])
-        err_df.loc[:, :] = nm_to_mj(err_df.loc[:, :])
-        flux_df.loc[:, :] = nm_to_mj(flux_df.loc[:, :])
+        err_df.loc[:, :] = self.nm_to_mj(err_df.loc[:, :])
+        flux_df.loc[:, :] = self.nm_to_mj(flux_df.loc[:, :])
 
         if not ignorphot:
             df = pd.concat([id_df, specid_df, flux_df, err_df, z_df], axis=1)

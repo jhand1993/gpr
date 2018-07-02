@@ -16,6 +16,9 @@ cat_translatedir = 'cat'
 
 class GPRMaster:
     """
+    This is the master class for all classes in GPR.
+    Includes json dump methods to handle data sharing
+    between different grabbers, primers, and runners.
     """
     def __init__(self):
         self.olddir = pl.Path(os.getcwd())
@@ -63,13 +66,19 @@ class GPRMaster:
         
 class MasterGrabber(GPRMaster):
     """
+    This is the master class for all grabbers. 
     """
     def __init__(self):
         super().__init__()
+    
+    def nm_to_mj(self, x):
+        # converts nanomaggies to microjanksys.
+        return x * 3.631
         
     
 class MasterPrimer(GPRMaster):
     """
+    This is the master class for all primers.
     """
     def __init__(self):
         super().__init__()
@@ -77,6 +86,7 @@ class MasterPrimer(GPRMaster):
 
 class MasterRunner(GPRMaster):
     """
+    This is the master class for all runners.
     """
     def __init__(self):
         super().__init__()
