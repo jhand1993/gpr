@@ -22,7 +22,10 @@ class GPRMaster:
         self.fname = fname
         self.fdir = pl.Path(fdir)
         self.dumpdir = self.fdir / dumpdir
-
+        # Dump names should not change
+        self.specdatadir_name_jdump = 'specdatadir-name'
+        self.fname_spec_jdump = 'filename-specObjID'
+        self.fname_obj_jdump = 'filename-objID'
         # make directories if they do not already exist:
         self.fdir.mkdir(exist_ok=True)
         self.dumpdir.mkdir(exist_ok=True)
@@ -33,6 +36,8 @@ class GPRMaster:
         """
         os.chdir(self.dumpdir)
         dumpdict = dict(zip(keys, values))
+        if '.' in dumpname:
+            dumpname = dumpname.split('.')[0]
         with open(dumpname + '.json', 'w+') as f:
             json.dump(dumpdict, f)
             f.close()
@@ -42,6 +47,18 @@ class GPRMaster:
         )
         os.chdir(self.olddir)
         return True
+
+    def dumploader(self, dumpname):
+        """
+        Generic json dump loader.
+        """
+        os.chdir(self.dumpdir)
+        if '.' in dumpname:
+            dumpname = dumpname.split('.')[0]
+        with open(dumpname + '.json', 'r') as f:
+            dumpdict = json.load(f)
+        os.chdir(self.olddir)
+        return dumpdict
 
         
 class MasterGrabber(GPRMaster):

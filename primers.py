@@ -9,14 +9,21 @@ import astropy.io.fits as fits
 from master import MasterPrimer
 
 
-class SpectraData:
+class SpectraData(MasterPrimer):
     """
     Will likely rewrite this to be inherited from astropy.io.fits.Fits
     class, but this works for now.
     """
     def __init__(self, filename):
+        super().__init__()
         self.filename = filename
         try:
+            # sort of a nonstandard way of getting specdata path:
+            specdatadir = self.dumploader(
+                self.specdatadir_name_jdump
+            )[self.specdatadir_name_jdump]
+            specdatadir = pl.Path(self.fdir) / specdatadir
+            os.chdir(specdatadir)
             self.spectradata = []
             self.fitsobj = fits.open(self.filename)
             list_of_tuples = list(self.fitsobj[1].data)
@@ -26,6 +33,7 @@ class SpectraData:
             self.flux = np.copy(self.fitsarr[:, 0])
             # converted to error from inverse variance
             self.fluxerr = 1 / np.sqrt(np.copy(self.fitsarr[:, 2])) 
+            os.chdir(self.olddir)
         except:
             raise
 
@@ -37,28 +45,29 @@ class FastppPrimer(MasterPrimer):
     create the .spec files from respective fits files if said files
     have already been grabbed.
     """
-    def __init__(self, specdatadir, binsize=10, lambdastep=0.5, lambdarange=(3800., 9000.)):
+    def __init__(
+        self, binsize=10, 
+        lambdastep=0.5, 
+        lambdarange=(3800., 9000.)
+    ):
         super().__init__()
-        self.specdatadir = self.fdir / specdatadir
+        specdatadict = self.dumploader(self.specdatadir_name_jdump)
+        self.specdatadir = self.fdir / str(
+            specdatadict[self.specdatadir_name_jdump]
+        )
         # create 'spedatadir' if it does not exist
         self.specdatadir.mkdir(exist_ok=True)
 
         self.binsize = binsize
         self.lambdarange = lambdarange
         self.lambdastep = lambdastep
-        self.jsonname_fname_spec = 'filename-specObjID'
-        self.jsonname_fname_obj = 'filename-objID'
+        self.fname_spec_jdump = 'filename-specObjID'
+        self.fname_obj_jdump = 'filename-objID'
         self.filelist = []
         self.spectralist = []
         try:
-            os.chdir(self.dumpdir)
-            with open(self.jsonname_fname_spec + '.json', 'r') as f:
-                self.fs_dict = json.load(f)
-                f.close()
-            with open(self.jsonname_fname_obj + '.json', 'r') as f:
-                self.fo_dict = json.load(f)
-                f.close()
-            os.chdir(self.olddir)
+            self.fs_dict = self.dumploader(self.fname_spec_jdump)
+            self.fo_dict = self.dumploader(self.fname_obj_jdump)
         except json.JSONDecodeError as e:
             print('JSON dumps from grabber we not uploaded.')
             print(str(e))
@@ -153,26 +162,23 @@ class FastppPrimer(MasterPrimer):
             )
         return fullname, objID
 
-    def spec_looper(self, specdatadir):
+    def spec_looper(self):
         """
         Creates .spec files for each fits file in attribute 'self.filelist'.
         If True, 'jsondump' creates a .json file with objID as keys and full
         .spec file name as values.
         """
-        self.specdatadir = self.fdir / specdatadir
-        self.specdatadir.mkdir(exist_ok=True)
         self.json_fullname_obj = 'fullname-objID'
         if not self.spectralist:
             # probably isn't populated, but no need to rerun this if it is.
-            os.chdir(self.specdatadir)
-            self.filelist = glob.glob('*.fits')
+            self.filelist = list(self.dumploader(self.fname_obj_jdump).keys())
             # this is the slowest part of the pipeline by far:
             self.spectralist = [SpectraData(f) for f in self.filelist]
         os.chdir(self.fdir)
         f_fullnamelist = []
         f_objIDlist = []
         for f in self.spectralist:
-            # Not sure why I used f here, but whatever.
+            # Not sure why I used 'f' here, but whatever.
             f_fullname, f_objID = self.spec_maker(f)
             f_fullnamelist.append(f_fullname)
             f_objIDlist.append(f_objID)

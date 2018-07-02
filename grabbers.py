@@ -225,10 +225,15 @@ class SpectraGrabber(MasterGrabber):
     def __init__(self, specdatadir):
         super().__init__()
         self.specdatadir = self.fdir / specdatadir
+        # Make specdatadir if it does not exist:
         self.specdatadir.mkdir(exist_ok=True)
+        # Save 'sepcdatadir' into dump to be used with primer/grabber
+        self.dumpmaker(
+            self.specdatadir_name_jdump, 
+            [self.specdatadir_name_jdump], 
+            [specdatadir]
+        )
         self.filelist = []
-        self.jsonname_fname_spec = 'filename-specObjID'
-        self.jsonname_fname_obj = 'filename-objID'
         self.df = pd.DataFrame()
         try:
             # try to make pandas dataframe from file 'fname'
@@ -293,8 +298,8 @@ class SdssSpectraGrabber(SpectraGrabber):
             localspecdata = glob.glob('*.fits')
             if len(localspecdata) == rowcount:
                 print(
-                    'Fits files already downloaded in directory ' +
-                    str(self.specdatadir)
+                    'Fits files already downloaded in directory \'' +
+                    str(self.specdatadir) + '\''
                 )
                 self.filelist = glob.glob('*.fits')
                 os.chdir(self.olddir)
@@ -303,51 +308,53 @@ class SdssSpectraGrabber(SpectraGrabber):
                 print(
                     'Downloading spectra from \'' + self.root + '\'...'
                 )
-            for row in range(rowcount):
-                # run through the rows of the df, construct file name,
-                # determine if spectra is from legacy or from eboss,
-                # and download file via requests.get() after constructing URL.
-                # See http://www.sdss.org/dr14/data_access/bulk/ for more
-                # information.
-                plate = plates[row]
-                mjd = mjds[row]
-                fiberID = fiberIDs[row]
-                if int(plate) < 3006:
-                    # for older spectra
-                    subroot = 'sdss/spectro/redux/26/spectra/'
-                else:
-                    # for newer spectra
-                    subroot = 'eboss/spectro/redux/v5_10_0/spectra/'
-                plate = str(plate)
-                if len(plate) < 4:
-                    # 'plate' is stored as an int, but the 'plate' portion of
-                    # the fits file name is a string of length 4, so zeroes may
-                    # need to be added to 'plate'.
-                    while len(plate) < 4:
-                        plate = '0' + plate
-                if len(fiberID) < 4:
-                    # 'fiberID' is stored as an int, but the 'fiberID' portion
-                    # of the fits file name is a string of length 4, so zeroes
-                    # may need to be added to 'fiberID'.
-                    while len(fiberID) < 4:
-                        fiberID = '0' + fiberID
-                url = self.root + subroot + plate + '/'
-                specname = 'spec-' + plate + '-' + mjd + '-' + fiberID + '.fits'
-                if specname in localspecdata:
-                    print('\'' + specname + '\' already downloaded.')
-                else:
-                    print('Downloading \'' + specname + '\'...')
-                    r = requests.get(
-                        url + specname, allow_redirects=True, stream=True
-                        )
-                    with open(specname, 'wb') as f:
-                        shutil.copyfileobj(r.raw, f)
-                specnamelist.append(specname)
-            self.filelist = specnamelist
-            print('Done.')
-            self.dumpmaker(self.jsonname_fname_spec, specnamelist, specObjIDlist)
-            self.dumpmaker(self.jsonname_fname_spec, specnamelist, objIDlist)
-            return True
+                for row in range(rowcount):
+                    # run through the rows of the df, construct file name,
+                    # determine if spectra is from legacy or from eboss,
+                    # and download file via requests.get() after constructing URL.
+                    # See http://www.sdss.org/dr14/data_access/bulk/ for more
+                    # information.
+                    plate = plates[row]
+                    mjd = mjds[row]
+                    fiberID = fiberIDs[row]
+                    if int(plate) < 3006:
+                        # for older spectra
+                        subroot = 'sdss/spectro/redux/26/spectra/'
+                    else:
+                        # for newer spectra
+                        subroot = 'eboss/spectro/redux/v5_10_0/spectra/'
+                    plate = str(plate)
+                    if len(plate) < 4:
+                        # 'plate' is stored as an int, but the 'plate' portion of
+                        # the fits file name is a string of length 4, so zeroes may
+                        # need to be added to 'plate'.
+                        while len(plate) < 4:
+                            plate = '0' + plate
+                    if len(fiberID) < 4:
+                        # 'fiberID' is stored as an int, but the 'fiberID' portion
+                        # of the fits file name is a string of length 4, so zeroes
+                        # may need to be added to 'fiberID'.
+                        while len(fiberID) < 4:
+                            fiberID = '0' + fiberID
+                    url = self.root + subroot + plate + '/'
+                    specname = 'spec-' + plate + '-' + mjd + '-' + fiberID + '.fits'
+                    if specname in localspecdata:
+                        print('\'' + specname + '\' already downloaded.')
+                    else:
+                        print('Downloading \'' + specname + '\'...')
+                        r = requests.get(
+                            url + specname, allow_redirects=True, stream=True
+                            )
+                        with open(specname, 'wb') as f:
+                            shutil.copyfileobj(r.raw, f)
+                    specnamelist.append(specname)
+                self.filelist = specnamelist
+                print(self.filelist)
+                print('Done.')
+                self.dumpmaker(self.fname_spec_jdump, specnamelist, specObjIDlist)
+                self.dumpmaker(self.fname_obj_jdump, specnamelist, objIDlist)
+                os.chdir(self.olddir)
+                return True
         except Exception as e:
             print(str(e))
             raise
