@@ -19,6 +19,9 @@ class GPRMaster:
     This is the master class for all classes in GPR.
     Includes json dump methods to handle data sharing
     between different grabbers, primers, and runners.
+
+    !!! Decision has been made to not rely on astropy
+    for unit conversion or calculations. !!!
     """
     def __init__(self):
         self.olddir = pl.Path(os.getcwd())
@@ -70,10 +73,6 @@ class MasterGrabber(GPRMaster):
     """
     def __init__(self):
         super().__init__()
-    
-    def nm_to_mj(self, x):
-        # converts nanomaggies to microjanksys.
-        return x * 3.631
         
     
 class MasterPrimer(GPRMaster):
@@ -82,6 +81,12 @@ class MasterPrimer(GPRMaster):
     """
     def __init__(self):
         super().__init__()
+    
+    def nm_to_mj(self, x):
+        """
+        Converts nanomaggies to microjanksys.
+        """
+        return x * 3.631
 
 
 class MasterRunner(GPRMaster):
