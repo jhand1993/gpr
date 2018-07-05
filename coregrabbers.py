@@ -1,7 +1,8 @@
 """
-For uniformity, all
+First and foremost, I am aware that having so many classes in 
+one file is bad form, but these are so fundamental to grabbing
+astronomy/cosmology data that one can argue otherwise
 """
-
 
 import json
 import os
@@ -25,54 +26,26 @@ class RestfulGrabber(MasterGrabber):
     Base REST API grabber class.  Used to keep 'Accept'
     in header set to json only.  No fits.
     """
-    def __init__(self, username=None, password=None):
+    def __init__(self):
+        super().__init__()
         self.accept = 'application/json' # DON'T CHANGE
-        self.auth = Authorize(username=username, password=password)
 
-    def token_getter(self, loginurl):
+    def token_getter(self, loginurl, username=None, password=None):
         """
-        Used to get token from login.
+        This gets a token given a login URL, username, and password.
         """
+        auth = Authorize(username=username, password=password)
         httpauth = self.auth.auth_generator()
         req = requests.get(loginurl, auth=httpauth)
         if req.status != 200:
             print('Username and/or password are invalid.')
             req.raise_for_status()
         elif req.status == 200:
-            token = req.text # i think this is wrong
+            response = json.loads(req.text)
+            token = X‐Auth‐Token # i think this is wrong
 
-
-class CasJobsGrabber(MasterGrabber):
-    """
-    Generic CasJobs grabber utilizing CasJobs API.
-    """
-    def __init__(self, username=None, password=None):
-        super().__init__(username, password)
-        self.loginurl = 
-        token = self.token_getter(self.loginurl)
-
-
-    def quickquery(self, query, usedataframe=True):
+    def headerbuilder(self, **kwargs):
         """
-        Run a quick query and convert response to pandas
-        dataframe.
+        Builds and returns a header dict.  Not tested...
         """
-
-
-    
-class SkyQueryGrabber(MasterGrabber):
-    """
-    Generic SkyQuery grabber utilizing SkyQuery API
-    """
-    def __init__(self):
-        super().__init__()
-
-
-class OACGrabber(MasterGrabber):
-    """
-    Grabber for the OACAPI: https://astrocats.space/ 
-    """
-    def __init__(self):
-        super().__init__()
-
-
+        return dict(kwargs)

@@ -52,10 +52,4 @@ class Authorize:
         return auth.HTTPBasicAuth(self.username, self.password)
 
 
-class Token:
-    """
-    This class is the token returned from HTTP authorization.
-    """
-    def __init__(self, token):
-        self.token = token
 
