@@ -4,10 +4,12 @@ import json
 
 # default subdirectory names
 
-fdir = '/Users/jaredhand/Documents/wmwv_research/hostmass2018/Hosts_spec'
+# fdir = '/Users/jaredhand/Documents/wmwv_research/hostmass2018/Hosts_spec'
 # fdir = pl.Path(os.getcwd()) / 'testdir'
-fname = 'Hosts_spec'
+# fname = 'Hosts_spec'
 # fname = 'testname'
+fdir = '/Users/jaredhand/Documents/wmwv_research/hostmass2018/starlight'
+fname = 'starlight'
 dumpdir = 'dumps'
 foutdir = 'fout'
 specdir = 'spec'

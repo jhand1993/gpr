@@ -30,20 +30,6 @@ class RestfulGrabber(MasterGrabber):
         super().__init__()
         self.accept = 'application/json' # DON'T CHANGE
 
-    def token_getter(self, loginurl, username=None, password=None):
-        """
-        This gets a token given a login URL, username, and password.
-        """
-        auth = Authorize(username=username, password=password)
-        httpauth = self.auth.auth_generator()
-        req = requests.get(loginurl, auth=httpauth)
-        if req.status != 200:
-            print('Username and/or password are invalid.')
-            req.raise_for_status()
-        elif req.status == 200:
-            response = json.loads(req.text)
-            token = X‐Auth‐Token # i think this is wrong
-
     def headerbuilder(self, **kwargs):
         """
         Builds and returns a header dict.  Not tested...
