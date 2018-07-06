@@ -24,11 +24,12 @@ from master import MasterGrabber
 class RestfulGrabber(MasterGrabber):
     """
     Base REST API grabber class.  Used to keep 'Accept'
-    in header set to json only.  No fits.
+    in header set to json only.  This is true for anything,
+    even just quereies.  No fits, no csv, or anything else.
     """
     def __init__(self):
         super().__init__()
-        self.accept = 'application/json' # DON'T CHANGE
+        accept = 'application/json' # DON'T CHANGE
 
     def headerbuilder(self, **kwargs):
         """

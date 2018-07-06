@@ -1,7 +1,20 @@
 import json
 import requests
-authJson = {"auth":{"identity":{"password":{"user":{"name":"jhand1993","password":"N1ceJ@cket"}}}}}
+import pandas as pd
 
-data = json.dumps(authJson)
-print(data)
+data =[{"specObjID":2396073120311044096,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396073395188951040,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396073670066857984,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396073944944764928,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396074219822671872,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396074494700578816,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396074769578485760,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396075044456392704,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396075594212206592,"mjd":53800,"plateID":2395915065514551296},
+{"specObjID":2396075869090113536,"mjd":53800,"plateID":2395915065514551296}]
+
+datas = json.dumps(data)
+df = pd.read_json(datas, orient='records')
+print(df)
+
 
