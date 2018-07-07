@@ -11,6 +11,7 @@ pandas = "*"
 astropy = "*"
 tabulate = "*"
 "urllib3" = "*"
+pypika = "*"
 
 [dev-packages]
 

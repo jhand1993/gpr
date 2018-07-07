@@ -26,32 +26,34 @@ Token key: 'X-Subject-Token'
 references:
 http://www.sciserver.org/docs/casjobs/CasJobs_REST_API.pdf
 https://media.readthedocs.org/pdf/sciserver/latest/sciserver.pdf
+
+UPDATE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Okay so astroquery handles literally all of this apart from CasJobs.
+The plan is now to integrate this project with astropy/astroquery
+and hopefully develop something like an astrorunner package that will
+unify Python wrapping.  This might be integrated into astroquery.
 """
 import time
 import json
 import os
 import pathlib
-import shutil
-import io
-import glob
 
-import astropy.coordinates as apc
-import astropy.units as u
 import numpy as np
 import pandas as pd
 import requests
-import urllib3
+import pypika as pp
 from grabbertools import Authorize
-from coregrabbers import RestfulGrabber
+from master import MasterGrabber
 
 
-class SkyServerGrabber(RestfulGrabber):
+class SkyServerGrabber(MasterGrabber):
     """
     Because SkyServer shares the same login URL it makes sense
     to make all other SkyServer class.
     """
     def __init__(self, username=None, password=None):
         super().__init__()
+        accept = 'application/json' # DON'T CHANGE
         username = username
         password = password
         self.tokenkey = 'X-Subject-Token'
@@ -292,6 +294,15 @@ class SdssCasJobsGrabber(SkyServerGrabber):
 
     # these methods are supposed to be more user friendly, and
     # more useful for data gathering.
+
+    def table_creater(self, tablename, columnnames, entries):
+        """
+        This method creats a table in the user's 'MyDB'.  As such,
+        this method overrides the argument 'context'.
+        """
+        createrurl = self.casjobsurl + '/contexts/MyDB/query'
+        
+
     def object_finder(
         self, datatable, objectlist, ralist, declist, radius,
         longquery=True
@@ -306,12 +317,8 @@ class SdssCasJobsGrabber(SkyServerGrabber):
 
 class SkyQueryGrabber(SkyServerGrabber):
     """
-    Generic SkyQuery grabber utilizing SkyQuery API.
+    Generic SkyQuery grabber utilizing SkyQuery API.  Until requested,
+    priority will be on OAC API grabbers.
     """
     def __init__(self):
         super().__init__()
-
-
-
-
-

@@ -13,7 +13,10 @@ In principle, each application that is to 'wrapped' with GPR will contain a grab
 ### Grabbers
 Grabbers either upload local data, or communicate with some web server or database to grab the prerequisite data require by a program.  For example, if photometry is to be done with the aptly named [SExtractor](https://www.astromatic.net/software/sextractor) (Bertin, E. & Arnouts, S. 1996) via GPR, then the SExtractor grabber class will grab the required FITS files from their source, and said grabber class will be tailored to do so using the required techinques.
 
-Because of APIs it is possible create unitize core grabbers instead of creating ones' own.  These core grabbers (which do not exist right now) will include a [CasJobs](https://skyserver.sdss.org/CasJobs/default.aspx) grabber, a [SkyQuery](http://voservices.net/skyquery/?token=) grabber, an [OACAPI](https://github.com/astrocatalogs/OACAPI) grabber, a [NED/IPAC](https://ned.ipac.caltech.edu/) grabber, a wget-style grabber, and so on.  It is hoped that a faster FITS reader/writer than [astropy.io.fits](http://www.astropy.org/) (no offense) will be integrated in the future, but that is by no means a priority and will likely be really, really hard.
+Because of APIs it is possible create unitize core grabbers instead of creating ones' own.  Luckily,
+astroquery provides a consistent and powerful tool for grabbing data from various data releases.
+Instead of constructing core grabbers form scratch, GPR will instead make heavy use of astroquery.
+Thus, GPR will become dependant upon astropy.
 
 ### Primers
 Primers are going to be the most heterogeneous component to any GPR workflow, as each primer must be tailored for the program that is being wrapped.  Each program takes different input formats, but in principle these inputs are either parameters or tediously organized data structures (like tables or datacubes).  Primers can also be used on program output files.  Most importantly, primers cannot be used to run said program, nor to grab data to be primed.

@@ -1,6 +1,7 @@
 import os
 import pathlib as pl
 import json
+import glob
 
 # default subdirectory names
 
@@ -29,6 +30,17 @@ class GPRMaster:
         self.olddir = pl.Path(os.getcwd())
         self.fname = fname
         self.fdir = pl.Path(fdir)
+        # make the files directory 'fdir' if it does not exist.
+        if not self.fdir.is_dir():
+            e = 'Directory ' + str(self.fdir) + ' does not exist.'
+            raise Exception(e)
+        os.chdir(self.fdir)
+        print(os.getcwd())
+        if len(glob.glob('*.csv')) == 0:
+            print(glob.glob('*.csv'))
+            e = 'Data file ' + self.fname + '.csv' + ' not found in ' + str(self.fdir)
+            raise Exception(e)
+        os.chdir(self.olddir)
         self.dumpdir = self.fdir / dumpdir
         # Dump names should not change
         self.specdatadir_name_jdump = 'specdatadir-name'

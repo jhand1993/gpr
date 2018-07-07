@@ -1,3 +1,8 @@
+"""
+spectra key and photo key will need to be specified...
+can't just hardcode specObjID and objID.
+"""
+import re
 import os
 import glob
 import json
@@ -65,16 +70,6 @@ class FastppPrimer(MasterPrimer):
         self.fname_obj_jdump = 'filename-objID'
         self.filelist = []
         self.spectralist = []
-        try:
-            self.fs_dict = self.dumploader(self.fname_spec_jdump)
-            self.fo_dict = self.dumploader(self.fname_obj_jdump)
-        except json.JSONDecodeError as e:
-            print('JSON dumps from grabber we not uploaded.')
-            print(str(e))
-            self.fs_dict = {}
-            self.fo_dict = {}
-        except:
-            raise
 
     def spec_maker(self, spectra):
         """
@@ -100,6 +95,8 @@ class FastppPrimer(MasterPrimer):
             while x < binsize:
                 binarr.append(i)
                 x += 1
+        self.fs_dict = self.dumploader(self.fname_spec_jdump)
+        self.fo_dict = self.dumploader(self.fname_obj_jdump)
         if not self.fs_dict or not self.fo_dict:
             print('JSON dumps have not been uploaded.')
             return False
@@ -187,34 +184,42 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self.olddir)
         return f_fullnamelist
 
-    def cat_maker(self, ignorphot=False):
+    def cat_maker(self, includephot=True):
         """
         This creates a catalog used by FAST++ for photometry. It makes
         heavy use of pandas dataframes 'filter' method to rename columns
         to include the required 'F_' and 'E_' prefixes for running FAST++.
+        Miscelleneous columns are tacked at the end and are provided via
+        keyword argument 'includecolumns', which can be a string or a list.
+        Otherwise unnecessary columns will be deleted are deleted.
         """
         os.chdir(self.fdir)
-        df = pd.read_csv(self.fname + '.csv', header=0)
-        # Break up the dataframe into different components 
-        # to be reorganized
-        err_df = df.filter(like='E_', axis=1)
-        id_df = df.filter(items=['objID'], axis=1)
-        flux_df = df.filter(like='F_', axis=1)
-        z_df = df.filter(like='z_', axis=1)
-        specid_df = df.filter(items=['specObjID'], axis=1)
-        id_df = id_df.rename(columns={'objID': '#ID'})
+        df = pd.read_csv(self.fname + '.csv', header=0, na_values='null')
 
-        err_df.loc[:, :] = 1 / np.sqrt(err_df.loc[:, :])
-        err_df.loc[:, :] = self.nm_to_mj(err_df.loc[:, :])
-        flux_df.loc[:, :] = self.nm_to_mj(flux_df.loc[:, :])
-
-        if not ignorphot:
-            df = pd.concat([id_df, specid_df, flux_df, err_df, z_df], axis=1)
-        else:
-            df = pd.concat([id_df, z_df], axis=1)
-
+        filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
+        df = df.filter(regex=filterexpression, axis=1)
+        df = df.rename(columns={'objID': '#ID'})
+        specObjID_df = df.loc[:, 'specObjID']
+        df = df.drop('specObjID', axis=1)
+        z_df = df.loc[:, 'z_spec']
+        df = df.drop('z_spec', axis=1)
+        for i in range(len(specObjID_df)):
+            if np.isnan(specObjID_df[i]):
+                specObjID_df[i] = 0.
+        newdf = pd.concat([df, z_df, specObjID_df.astype(int)], axis=1)
+        for col in list(newdf.columns):
+            # This regex '[E](_)[a-zA-Z]' finds all E_* columns 
+            # (flux error)
+            if re.match(r'[E](_)[a-zA-Z]', col):
+                newdf[col] = [self.nm_to_mj(1/np.sqrt(x)) for x in newdf[col]]
+                newdf[col] = newdf[col].round(decimals=3)
+            # This regex '[E](_)[a-zA-Z]' finds all F_* columns 
+            # (flux)
+            elif re.match(r'[E](_)[a-zA-Z]', col):
+                newdf[col] = [self.nm_to_mj(x) for x in newdf[col]]
+                newdf[col] = newdf[col].round(decimals=3)
         # Save the dataframe as a .csv.
-        df.to_csv(self.fname + '.cat', sep='\t', index=False)
+        newdf.to_csv(self.fname + '.cat', sep='\t', index=False)
         os.chdir(self.olddir)
         return True
 
@@ -234,7 +239,6 @@ class FastppFoutGrouper(MasterPrimer):
         self.jsonname_fullname_objID = 'fullname-objID'
         try:
             os.chdir(self.dumpdir)
-            print(os.getcwd())
             with open(self.jsonname_fullname_objID + '.json', 'r') as f:
                 self.fno_dict = json.load(f)
                 f.close()

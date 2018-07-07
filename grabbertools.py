@@ -27,7 +27,7 @@ from master import MasterGrabber
 class Authorize:
     """
     This class contains username and password used for authorization
-    via API.  
+    via API.  Only used for SDSS CasJobs.
     """
     def __init__(self, username=None, password=None):
         """
@@ -52,4 +52,11 @@ class Authorize:
         return auth.HTTPBasicAuth(self.username, self.password)
 
 
-
+class RestfulGrabber(MasterGrabber):
+    """
+    Base REST API grabber class.  Used to keep 'Accept'
+    in header set to json only.  This is true for anything,
+    even just quereies.  No fits, no csv, or anything else.
+    """
+    def __init__(self):
+        super().__init__()

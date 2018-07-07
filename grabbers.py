@@ -16,7 +16,7 @@ from master import MasterGrabber
 class OscConnection:
     """ 
     Opens and maintains a connection to osc for grabbing data.
-    !!! Needs to be integrated into MasterGrabber class !!!
+    !!! Depracated.  astroquery already has this and does it better !!!
     """
     def __init__(self, fname='payload.param'):
         self.surv = ''
