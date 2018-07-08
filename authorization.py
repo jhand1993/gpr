@@ -3,25 +3,12 @@ These classes and functions are used for authentication
 for web services such as CasJobs API and so on.  No actual
 HTTP methods are to be used here.
 
-SQL query constuctors will be included here as well.
-
 For readability and generality, request.auth.HTTPBasicauth is
 to be used instead of the 'auth' tuple keyword.
 """
-
-import json
-import os
-import pathlib
-import shutil
-import io
-import glob
 import getpass
 
-import numpy as np
-import pandas as pd
 import requests.auth as auth
-import urllib3
-from master import MasterGrabber
 
 
 class Authorize:
@@ -32,8 +19,8 @@ class Authorize:
     def __init__(self, username=None, password=None):
         """
         By default, the user provides credentials for authentication.
-        Otherwise one can specifcy the username and password 
-        explicitly.
+        Otherwise one can specify the username and password 
+        via the relatively secure getpass module.
         """
         if not username:
             self.username = getpass.getuser()
@@ -50,13 +37,3 @@ class Authorize:
         returns HTTPBasicauth for 'username' and 'password' attributes.
         """
         return auth.HTTPBasicAuth(self.username, self.password)
-
-
-class RestfulGrabber(MasterGrabber):
-    """
-    Base REST API grabber class.  Used to keep 'Accept'
-    in header set to json only.  This is true for anything,
-    even just quereies.  No fits, no csv, or anything else.
-    """
-    def __init__(self):
-        super().__init__()

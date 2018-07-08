@@ -227,7 +227,7 @@ class SpectraGrabber(MasterGrabber):
         self.specdatadir = self.fdir / specdatadir
         # Make specdatadir if it does not exist:
         self.specdatadir.mkdir(exist_ok=True)
-        # Save 'sepcdatadir' into dump to be used with primer/grabber
+        # Save 'specdatadir' into dump to be used with primer/grabber
         self.dumpmaker(
             self.specdatadir_name_jdump, 
             [self.specdatadir_name_jdump], 
@@ -236,7 +236,7 @@ class SpectraGrabber(MasterGrabber):
         self.filelist = []
         self.df = pd.DataFrame()
         try:
-            # try to make pandas dataframe from file 'fname'
+            # try to make pandas dataframe from file 'fname':
             os.chdir(self.fdir)
             self.df = pd.read_csv(self.fname + '.csv', dtype=str)
             os.chdir(self.olddir)

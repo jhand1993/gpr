@@ -2,6 +2,9 @@ import os
 import pathlib as pl
 import json
 import glob
+import subprocess
+
+import requests
 
 # default subdirectory names
 
@@ -28,26 +31,30 @@ class GPRMaster:
     """
     def __init__(self):
         self.olddir = pl.Path(os.getcwd())
-        self.fname = fname
-        self.fdir = pl.Path(fdir)
-        # make the files directory 'fdir' if it does not exist.
-        if not self.fdir.is_dir():
-            e = 'Directory ' + str(self.fdir) + ' does not exist.'
-            raise Exception(e)
-        os.chdir(self.fdir)
-        print(os.getcwd())
-        if len(glob.glob('*.csv')) == 0:
-            print(glob.glob('*.csv'))
-            e = 'Data file ' + self.fname + '.csv' + ' not found in ' + str(self.fdir)
-            raise Exception(e)
+        # change to code directory and load masterconfig.json:
+        codedir = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(codedir)
+        # load of master configuration:
+        with open('masterconfig.json') as f:
+            masterconfig = json.load(f)
+            f.close
         os.chdir(self.olddir)
-        self.dumpdir = self.fdir / dumpdir
+        self.fname = masterconfig['file name']
+        configfilepath = masterconfig['file directory']
+        # handle various file directory formats.
+        if '~' in configfilepath or '~user' in configfilepath:
+            self.fdir = pl.Path(os.path.expanduser(configfilepath))
+        elif not os.path.isdir(configfilepath):
+            raise Exception(configfilepath + ' is not a valid directory.')
+        else:
+            self.fdir = pl.Path(configfilepath)
+        self.fdir = pl.Path(fdir)
+        self.dumpdir = self.fdir / masterconfig['dump subdirectory name']
         # Dump names should not change
         self.specdatadir_name_jdump = 'specdatadir-name'
         self.fname_spec_jdump = 'filename-specObjID'
         self.fname_obj_jdump = 'filename-objID'
-        # make directories if they do not already exist:
-        self.fdir.mkdir(exist_ok=True)
+        # make dump directory if they do not already exist:
         self.dumpdir.mkdir(exist_ok=True)
 
     def dumpmaker(self, dumpname, keys, values):
@@ -63,7 +70,7 @@ class GPRMaster:
             f.close()
         print(
             '\'' + dumpname + '.json\' dumped in\'',
-            str(self.dumpdir) + '\''
+            str(self.dumpdir) + '\'.'
         )
         os.chdir(self.olddir)
         return True
@@ -72,13 +79,16 @@ class GPRMaster:
         """
         Generic json dump loader.
         """
-        os.chdir(self.dumpdir)
-        if '.' in dumpname:
-            dumpname = dumpname.split('.')[0]
-        with open(dumpname + '.json', 'r') as f:
-            dumpdict = json.load(f)
-        os.chdir(self.olddir)
-        return dumpdict
+        try:
+            os.chdir(self.dumpdir)
+            if '.' in dumpname:
+                dumpname = dumpname.split('.')[0]
+            with open(dumpname + '.json', 'r') as f:
+                dumpdict = json.load(f)
+            os.chdir(self.olddir)
+            return dumpdict
+        except Exception as e:
+            print(str(e))
 
         
 class MasterGrabber(GPRMaster):
@@ -87,6 +97,34 @@ class MasterGrabber(GPRMaster):
     """
     def __init__(self):
         super().__init__()
+
+    def web_grabber(self, url, datadir, filelist):
+        """
+        This basically works like wget or curl.  This method
+        is just a generic file downloader that iterates through
+        'filelist' and downloads each file from 'url' to 'datadir'.
+        """
+        datadir = self.fdir / datadir
+        os.chdir(datadir)
+        # grab existing files in 'datadir':
+        localdata = glob.glob('*')
+        for f in filelist:
+            try:
+                # check and skip files that are already downloaded:
+                if f in localdata:
+                    print('\'' + f + '\' already downloaded.')
+                else:
+                    print('Downloading \'' + specname + '\'...')
+                    r = requests.get(
+                        url + f, allow_redirects=True, stream=True
+                        )
+                    with open(f, 'wb') as newf:
+                        shutil.copyfileobj(r.raw, newf)
+                        newf.close()
+            except Exception as e:
+                print(str(e))
+        os.chdir(self.olddir)
+        return True
         
     
 class MasterPrimer(GPRMaster):
@@ -109,3 +147,24 @@ class MasterRunner(GPRMaster):
     """
     def __init__(self):
         super().__init__()
+
+    def runner(self, cmd):
+        """
+        This is a wrapper or opening a pipe via subprocess. The
+        input 'cmd' and be either a shell command or, preferably,
+        a list containing the command and parameters.
+        """
+        try:
+            # convert command string to list if needed:
+            os.chdir(self.fdir)
+            if type(cmd) == str:
+                cmd = cmd.split(' ')
+            process = subprocess.Popen(cmd,
+                shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+            )
+            proess.wait()
+            os.chdir(self.olddir)
+            return True
+        except Exception as e:
+            print(str(e))
+        

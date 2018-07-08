@@ -2,31 +2,34 @@
 Runners should not move files explicitly.  All file movement
 should be done by primers and then called in the runner.
 """
-
 import shutil
 import subprocess
 import os
 
 import numpy as np 
-import primers
-import grabbers
+import fastppprimer
+import spectragrabber
 from master import MasterRunner
-
-sdssroot = 'https://data.sdss.org/sas/dr14/'
-sdssspecdatadir = 'specdata'
 
 
 class FastppRunner(MasterRunner):
     """
     Contains methods to run FAST++.
     """
-    def __init__(self):
+    def __init__(self, cmd=None):
         super().__init__()
-        self.grabber = grabbers.SdssSpectraGrabber(
+        self.programname = 'fast++'
+        if not cmd:
+            self.cmd = [self.programname, self.fname + '.param']
+        elif cmd and type(cmd) == str:
+            self.cmd = cmd.split(' ')
+        else:
+            self.cmd = cmd
+        self.grabber = spectragrabber.SdssSpectraGrabber(
             specdatadir=sdssspecdatadir, 
             root=sdssroot
             )
-        self.primer = primers.FastppPrimer()
+        self.primer = fastppprimer.FastppPrimer()
         
     def fastpp_runner(self, includephot=True, includespec=True, **kwargs):
         """
@@ -35,6 +38,12 @@ class FastppRunner(MasterRunner):
 
         **kwargs={param1: value1, param2: value2, ...}
         """
+        os.chdir(self.fdir)
+        # load .param data used by FAST++
+        paramdata = np.loadtxt(self.fname + '.param', dtype=str)
+        # grab .paramdata parameter:value pairs in dictionary:
+        paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
+        # if spectra are included, then loop through each:
         if includespec:
             try:
                 self.grabber.sdss_spectra_grabber()
@@ -42,14 +51,10 @@ class FastppRunner(MasterRunner):
                 self.primer.cat_maker(includephot=includephot)
                 # ftr : files to run
                 self.ftrlist = self.grabber.filelist
-                os.chdir(self.fdir)
-                # load .param data used by FAST++
-                paramdata = np.loadtxt(self.fname + '.param', dtype=str)
-                # grab .paramdata parameter:value pairs in dictionary:
-                paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
                 for f in self.ftrlist:
                     # Need to remove file extension:
                     fullname = self.fname + '-' + f.split('.')[0]
+                    # make changes to .param file specificied by kwargs
                     if kwargs:
                         for key, value in kwargs.items():
                             paramdatadict[key] = value
@@ -57,7 +62,6 @@ class FastppRunner(MasterRunner):
                     paramdatadict['CATALOG'] = fullname
                     with open(fullname + '.param', 'w+') as f:
                         for key, value in paramdatadict.items():
-                            # value = paramdatadict[key]
                             newline = key + ' = ' + value + '\n'
                             f.write(newline)
                         f.close()
@@ -69,28 +73,25 @@ class FastppRunner(MasterRunner):
                         self.fname + '.translate', 
                         fullname + '.translate'
                     )
-                    cmd = 'fast++ ' + fullname + '.param'
-                    # shell=True is not secure at all, but will work for now
-                    process = subprocess.Popen(cmd, shell=True) 
-                    # stout, sterr = process.communicate()
-                    process.wait()
+                    # change self.cmd for each file fullname
+                    self.cmd = [self.programname, fullname + '.param']
+                    self.runner(self.cmd)
+                # recombine each fast++ run on individual spectra into
+                # new .fout file:
                 os.chdir(self.olddir)
-                grouper = primers.FastppFoutGrouper(foutdir='fout')
+                grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
                 grouper.regrouper()
                 return True
             except Exception as e:
                 print(str(e))
         else:
             try:
+                # make changes to .param file specificied by kwargs
+                if kwargs:
+                    for key, value in kwargs.items():
+                        paramdatadict[key] = value
                 self.primer.cat_maker(includephot=includephot)
-                os.chdir(self.fdir)
-                cmd = 'fast++ ' + self.fname + '.param'
-                process = subprocess.Popen(cmd, shell=True)
-                process.wait()
-                os.chdir(self.olddir)
+                self.runner(self.cmd)
                 return True
             except Exception as e:
                 print(str(e))
-
-x = FastppRunner()
-x.fastpp_runner(includespec=False)

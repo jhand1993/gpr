@@ -317,8 +317,8 @@ class SdssCasJobsGrabber(SkyServerGrabber):
 
 class SkyQueryGrabber(SkyServerGrabber):
     """
-    Generic SkyQuery grabber utilizing SkyQuery API.  Until requested,
-    priority will be on OAC API grabbers.
+    Generic SkyQuery grabber utilizing SkyQuery API.  This won't be
+    started until astroquery format is better understood.
     """
     def __init__(self):
         super().__init__()
