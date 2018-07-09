@@ -225,8 +225,10 @@ class SpectraGrabber(MasterGrabber):
     def __init__(self, specdatadir):
         super().__init__()
         self.specdatadir = self.fdir / specdatadir
+
         # Make specdatadir if it does not exist:
         self.specdatadir.mkdir(exist_ok=True)
+
         # Save 'specdatadir' into dump to be used with primer/grabber
         self.dumpmaker(
             self.specdatadir_name_jdump, 
@@ -236,6 +238,7 @@ class SpectraGrabber(MasterGrabber):
         self.filelist = []
         self.df = pd.DataFrame()
         try:
+
             # try to make pandas dataframe from file 'fname':
             os.chdir(self.fdir)
             self.df = pd.read_csv(self.fname + '.csv', dtype=str)
@@ -263,9 +266,9 @@ class SdssSpectraGrabber(SpectraGrabber):
     SDSS SAS.  Can be used to grab spectra from mjd, place, fiberID information
     from a valid data file/table.
     """
-    def __init__(self, specdatadir, root):
+    def __init__(self, specdatadir, url):
         super().__init__(specdatadir)
-        self.root = root
+        self.url = url
 
     def sdss_spectra_grabber(self):
         """
@@ -280,6 +283,7 @@ class SdssSpectraGrabber(SpectraGrabber):
         specnamelist = []
         os.chdir(self.fdir)
         try:
+
             # try and grab the necessary columns from 'df'
             mjds = np.array(self.df['mjd'], dtype=str)
             plates = np.array(self.df['plate'], dtype=str)
@@ -293,6 +297,10 @@ class SdssSpectraGrabber(SpectraGrabber):
         except:
             raise
         rowcount = self.df.shape[0]
+
+        # will be ued soon
+        ebosslist = []
+        sdsslist = []
         try:
             os.chdir(self.specdatadir)
             localspecdata = glob.glob('*.fits')
@@ -306,9 +314,10 @@ class SdssSpectraGrabber(SpectraGrabber):
                 return True
             else:
                 print(
-                    'Downloading spectra from \'' + self.root + '\'...'
+                    'Downloading spectra from \'' + self.url + '\'...'
                 )
                 for row in range(rowcount):
+
                     # run through the rows of the df, construct file name,
                     # determine if spectra is from legacy or from eboss,
                     # and download file via requests.get() after constructing URL.
@@ -318,25 +327,29 @@ class SdssSpectraGrabber(SpectraGrabber):
                     mjd = mjds[row]
                     fiberID = fiberIDs[row]
                     if int(plate) < 3006:
+
                         # for older spectra
-                        subroot = 'sdss/spectro/redux/26/spectra/'
+                        suburl = 'sdss/spectro/redux/26/spectra/'
                     else:
+
                         # for newer spectra
-                        subroot = 'eboss/spectro/redux/v5_10_0/spectra/'
+                        suburl = 'eboss/spectro/redux/v5_10_0/spectra/'
                     plate = str(plate)
                     if len(plate) < 4:
+
                         # 'plate' is stored as an int, but the 'plate' portion of
                         # the fits file name is a string of length 4, so zeroes may
                         # need to be added to 'plate'.
                         while len(plate) < 4:
                             plate = '0' + plate
                     if len(fiberID) < 4:
+
                         # 'fiberID' is stored as an int, but the 'fiberID' portion
                         # of the fits file name is a string of length 4, so zeroes
                         # may need to be added to 'fiberID'.
                         while len(fiberID) < 4:
                             fiberID = '0' + fiberID
-                    url = self.root + subroot + plate + '/'
+                    url = self.url + suburl + plate + '/'
                     specname = 'spec-' + plate + '-' + mjd + '-' + fiberID + '.fits'
                     if specname in localspecdata:
                         print('\'' + specname + '\' already downloaded.')

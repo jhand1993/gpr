@@ -25,10 +25,6 @@ class FastppRunner(MasterRunner):
             self.cmd = cmd.split(' ')
         else:
             self.cmd = cmd
-        self.grabber = spectragrabber.SdssSpectraGrabber(
-            specdatadir=sdssspecdatadir, 
-            root=sdssroot
-            )
         self.primer = fastppprimer.FastppPrimer()
         
     def fastpp_runner(self, includephot=True, includespec=True, **kwargs):
