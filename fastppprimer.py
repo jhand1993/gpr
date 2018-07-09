@@ -243,15 +243,7 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self.olddir)
         return f_fullnamelist
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     def cat_maker(self, filename=None, includephot=True):
-=======
-    def cat_maker(self, filename=self.fname + '.csv', includephot=True):
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
-=======
-    def cat_maker(self, filename=self.fname + '.csv', includephot=True):
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
         """
         This creates a catalog used by FAST++ for photometry. It makes
         heavy use of pandas dataframes 'filter' method to rename columns

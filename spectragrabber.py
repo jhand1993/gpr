@@ -62,16 +62,10 @@ class SdssSpectraGrabber(SpectraGrabber):
     SDSS SAS.  Can be used to grab spectra from mjd, place, fiberID information
     from a valid data file/table.  
     """
-<<<<<<< HEAD
     def __init__(self, specdatadir, dr, url):
         super().__init__(specdatadir)
         self.url = url
         self.dr = dr
-=======
-    def __init__(self, specdatadir, url):
-        super().__init__(specdatadir)
-        self.url = url
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
 
     def sdss_spectra_grabber(self):
         """
@@ -152,19 +146,11 @@ class SdssSpectraGrabber(SpectraGrabber):
                         # may need to be added to 'fiberID'.
                         while len(fiberID) < 4:
                             fiberID = '0' + fiberID
-<<<<<<< HEAD
-<<<<<<< HEAD
                     
                     # create url that is used to download file"
                     url = self.url + suburl + plate + '/'
 
                     # create file name for file that is to be downloaded:
-=======
-                    url = self.url + suburl + plate + '/'
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
-=======
-                    url = self.url + suburl + plate + '/'
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
                     specname = 'spec-' + plate + '-' + mjd + '-' + fiberID + '.fits'
                     if specname in localspecdata:
                         print('\'' + specname + '\' already downloaded.')
