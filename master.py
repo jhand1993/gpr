@@ -40,7 +40,11 @@ class GPRMaster:
             self.fdir = pl.Path(configfilepath)
 
         # set file directory and dump directory as attributes:
+<<<<<<< HEAD
         self.fdir = pl.Path(self.fdir)
+=======
+        self.fdir = pl.Path(fdir)
+>>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
         self.dumpdir = self.fdir / masterconfig['dump subdirectory name']
 
         # make dump directory if they do not already exist:

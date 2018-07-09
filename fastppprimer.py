@@ -97,11 +97,14 @@ class FastppPrimer(MasterPrimer):
         'double binning' required for FAST(++).
         """
 
+<<<<<<< HEAD
         # create dump dictionaries.  Note these are only needed
         # if spectra is beig used:
         self.fs_dict = self.dumploader(self.fname_spec_jdump)
         self.fo_dict = self.dumploader(self.fname_obj_jdump)
         
+=======
+>>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
         # set local variables
         binarr = []
         binsize = self.binsize
@@ -244,7 +247,11 @@ class FastppPrimer(MasterPrimer):
         return f_fullnamelist
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     def cat_maker(self, filename=None, includephot=True):
+=======
+    def cat_maker(self, filename=self.fname + '.csv', includephot=True):
+>>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
 =======
     def cat_maker(self, filename=self.fname + '.csv', includephot=True):
 >>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685

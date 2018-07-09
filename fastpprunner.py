@@ -31,8 +31,11 @@ class FastppRunner(MasterRunner):
         # otherwise, set 'cmd' to 'self.cmd':
         elif cmd :
             self.cmd = cmd
+<<<<<<< HEAD
         
         # instantiate primer object as attribute:
+=======
+>>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
         self.primer = fastppprimer.FastppPrimer()
         
     def fastpp_runner(self, includephot=True, includespec=True, **kwargs):
