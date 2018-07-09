@@ -97,14 +97,11 @@ class FastppPrimer(MasterPrimer):
         'double binning' required for FAST(++).
         """
 
-<<<<<<< HEAD
         # create dump dictionaries.  Note these are only needed
         # if spectra is beig used:
         self.fs_dict = self.dumploader(self.fname_spec_jdump)
         self.fo_dict = self.dumploader(self.fname_obj_jdump)
         
-=======
->>>>>>> 0a3bbc6c2a14188a294fd37789610624f67c2685
         # set local variables
         binarr = []
         binsize = self.binsize
