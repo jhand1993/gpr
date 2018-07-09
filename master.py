@@ -6,19 +6,6 @@ import subprocess
 
 import requests
 
-# default subdirectory names
-
-# fdir = '/Users/jaredhand/Documents/wmwv_research/hostmass2018/Hosts_spec'
-# fdir = pl.Path(os.getcwd()) / 'testdir'
-# fname = 'Hosts_spec'
-# fname = 'testname'
-fdir = '/Users/jaredhand/Documents/wmwv_research/hostmass2018/starlight'
-fname = 'starlight'
-dumpdir = 'dumps'
-foutdir = 'fout'
-specdir = 'spec'
-cat_translatedir = 'cat'
-
 
 class GPRMaster:
     """
@@ -31,16 +18,19 @@ class GPRMaster:
     """
     def __init__(self):
         self.olddir = pl.Path(os.getcwd())
+
         # change to code directory and load masterconfig.json:
         codedir = os.path.dirname(os.path.realpath(__file__))
         os.chdir(codedir)
-        # load of master configuration:
+
+        # load configuration data from master configuration:
         with open('masterconfig.json') as f:
             masterconfig = json.load(f)
             f.close
         os.chdir(self.olddir)
         self.fname = masterconfig['file name']
         configfilepath = masterconfig['file directory']
+
         # handle various file directory formats.
         if '~' in configfilepath or '~user' in configfilepath:
             self.fdir = pl.Path(os.path.expanduser(configfilepath))
@@ -48,23 +38,34 @@ class GPRMaster:
             raise Exception(configfilepath + ' is not a valid directory.')
         else:
             self.fdir = pl.Path(configfilepath)
-        self.fdir = pl.Path(fdir)
+
+        # set file directory and dump directory as attributes:
+        self.fdir = pl.Path(self.fdir)
         self.dumpdir = self.fdir / masterconfig['dump subdirectory name']
+
+        # make dump directory if they do not already exist:
+        self.dumpdir.mkdir(exist_ok=True)
+
         # Dump names should not change
         self.specdatadir_name_jdump = 'specdatadir-name'
         self.fname_spec_jdump = 'filename-specObjID'
         self.fname_obj_jdump = 'filename-objID'
-        # make dump directory if they do not already exist:
-        self.dumpdir.mkdir(exist_ok=True)
+        self.fullname_obj_jdump = 'fullname-objID'
 
     def dumpmaker(self, dumpname, keys, values):
         """
         Generic json dump creater.
         """
         os.chdir(self.dumpdir)
+
+        # create a dictionary from keys and values given:
         dumpdict = dict(zip(keys, values))
+
+        # remove '.' from dumpname is given:
         if '.' in dumpname:
             dumpname = dumpname.split('.')[0]
+        
+        # save json file with dump data:
         with open(dumpname + '.json', 'w+') as f:
             json.dump(dumpdict, f)
             f.close()
@@ -81,8 +82,12 @@ class GPRMaster:
         """
         try:
             os.chdir(self.dumpdir)
+
+            # remove '.' from dumpname is given:
             if '.' in dumpname:
                 dumpname = dumpname.split('.')[0]
+            
+            # load dump dictionary from json file 'dumpname':
             with open(dumpname + '.json', 'r') as f:
                 dumpdict = json.load(f)
             os.chdir(self.olddir)
@@ -105,7 +110,11 @@ class MasterGrabber(GPRMaster):
         'filelist' and downloads each file from 'url' to 'datadir'.
         """
         datadir = self.fdir / datadir
+
+        # make datadir if it does not exist:
+        datadir.mkdir(exist_ok=True)
         os.chdir(datadir)
+
         # grab existing files in 'datadir':
         localdata = glob.glob('*')
         for f in filelist:
@@ -113,6 +122,8 @@ class MasterGrabber(GPRMaster):
                 # check and skip files that are already downloaded:
                 if f in localdata:
                     print('\'' + f + '\' already downloaded.')
+
+                # if they are not downloaded, then download:
                 else:
                     print('Downloading \'' + specname + '\'...')
                     r = requests.get(
@@ -159,12 +170,17 @@ class MasterRunner(GPRMaster):
             os.chdir(self.fdir)
             if type(cmd) == str:
                 cmd = cmd.split(' ')
+
+            # run the program as a subprocess:
             process = subprocess.Popen(cmd,
-                shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+                shell=False
             )
-            proess.wait()
+
+            # wait for it to finish:
+            process.wait()
             os.chdir(self.olddir)
             return True
         except Exception as e:
             print(str(e))
+            raise
         
