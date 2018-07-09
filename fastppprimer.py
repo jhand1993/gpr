@@ -65,13 +65,18 @@ class FastppPrimer(MasterPrimer):
     ):
         super().__init__()
 
+        # check to see if spectra data dictionary exists:
+        filecheck = str(self.dumpdir / self.specdatadir_name_jdump) + '.json'
+        if not os.path.isfile(filecheck):
+            raise Exception(filecheck + ' does not exist.')
+
         # create spectra data dictionary to grab spectra data directory:
         specdatadict = self.dumploader(self.specdatadir_name_jdump)
         self.specdatadir = self.fdir / str(
             specdatadict[self.specdatadir_name_jdump]
         )
 
-        # create 'specdatadir' if it does not exist
+        # create 'specdatadir' if it does not exist:
         self.specdatadir.mkdir(exist_ok=True)
 
         # set keyword attributes:

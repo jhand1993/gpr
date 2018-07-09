@@ -18,7 +18,7 @@ class SpectraGrabber(MasterGrabber):
     Base class for grabbing spectra data from indiviual image/files
     for gieven targest.  
     """
-    def __init__(self, specdatadir):
+    def __init__(self, specdatadir, filename=None):
         super().__init__()
         self.specdatadir = self.fdir / specdatadir
 
@@ -35,9 +35,36 @@ class SpectraGrabber(MasterGrabber):
         self.df = pd.DataFrame()
         try:
 
-            # try to make pandas dataframe from file 'fname':
+            # try to make pandas dataframe from file 'fname'.
+            # If 'filename' is None, then use self.fname + .csv:
             os.chdir(self.fdir)
-            self.df = pd.read_csv(self.fname + '.csv', dtype=str)
+            if not filename:
+                self.df = pd.read_csv(self.fname + '.csv', dtype=str)
+
+            # make sure there is an extension in 'filename':
+            elif '.' not in filename:
+                e = 'No file extension given for given filename.'
+                raise Exception(e)
+            else:
+
+                # check to make sure 'filename' exists
+                actualfile = glob.glob(filename)
+                if len(actualfile) == 0:
+                    e = filename + ' not found in ' + self.fdir + '.'
+                    raise FileNotFoundError(e)
+                
+                # fine extension and load data appropriately:
+                ext = filename.split('.')[0]
+                if ext == '.csv':
+                    self.df = pd.read_csv(filename, dtype=str)
+                elif ext == '.tsv':
+                    self.df = pd.read_csv(filename, dtype=str, delimiter='\t')
+                elif ext == '.txt':
+                    self.df = pd.read_csv(
+                        filename, dtype=str, delimiter_whitespace=True
+                    )
+                else:
+                    raise Exception('Use a different file extension.')
             os.chdir(self.olddir)
         except FileNotFoundError as e:
             print(
@@ -62,10 +89,9 @@ class SdssSpectraGrabber(SpectraGrabber):
     SDSS SAS.  Can be used to grab spectra from mjd, place, fiberID information
     from a valid data file/table.  
     """
-    def __init__(self, specdatadir, dr, url):
+    def __init__(self, specdatadir, url):
         super().__init__(specdatadir)
         self.url = url
-        self.dr = dr
 
     def sdss_spectra_grabber(self):
         """
@@ -98,6 +124,8 @@ class SdssSpectraGrabber(SpectraGrabber):
         # will be ued soon
         ebosslist = []
         sdsslist = []
+
+        """
         try:
             os.chdir(self.specdatadir)
             localspecdata = glob.glob('*.fits')
@@ -123,6 +151,7 @@ class SdssSpectraGrabber(SpectraGrabber):
                     plate = plates[row]
                     mjd = mjds[row]
                     fiberID = fiberIDs[row]
+                    
                     if int(plate) < 3006:
 
                         # for older spectra
@@ -131,6 +160,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                         # for newer spectra
                         suburl = 'eboss/spectro/redux/v5_10_0/spectra/'
+                    
                     plate = str(plate)
                     if len(plate) < 4:
 
@@ -170,9 +200,11 @@ class SdssSpectraGrabber(SpectraGrabber):
                 self.dumpmaker(self.fname_obj_jdump, specnamelist, objIDlist)
                 os.chdir(self.olddir)
                 return True
+        
         except Exception as e:
             print(str(e))
             raise
         finally:
             os.chdir(self.olddir)
+        """
             
