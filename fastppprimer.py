@@ -35,6 +35,7 @@ class SpectraData(MasterPrimer):
 
             # Grab the fits data (which is a list of tuples)
             # and store as a 2D array:
+            print('Loading', filename, '...')
             self.fitsobj = fits.open(self.filename)
             list_of_tuples = list(self.fitsobj[1].data)
             self.fitsarr = np.array([list(x) for x in list_of_tuples])
@@ -337,18 +338,18 @@ class FastppFoutGrouper(MasterPrimer):
         # create 'foutdir' if it does not exist:
         self.foutdir.mkdir(exist_ok=True)
 
-        # load fullname_obj dump:
-        self.fno_dict = self.dumploader(self.fullname_obj_jdump)
-
     def regrouper(self):
         """
         Combines the individual .fout files for each galaxy into a composite
         .fout file.
         """
-        os.chdir(self.foutdir)
+        # load fullname_obj dump:
+        self.fno_dict = self.dumploader(self.fullname_obj_jdump)
 
         # grab all .fout files created by fast++:
+        os.chdir(self.fdir)
         foutlist = glob.glob('*.fout')
+        os.chdir(self.olddir)
 
         # get rid of .fout extension in string:
         foutlist = [x.split('.')[0] for x in foutlist]
@@ -357,47 +358,51 @@ class FastppFoutGrouper(MasterPrimer):
         rowlist = []
         headerchecker = False
         header = ''
+        
+        # loop through .fout files:
+        os.chdir(self.fdir)
         for fout in foutlist:
             try:
+                # grab the objID from file name:
                 objID = self.fno_dict[fout]
-            except KeyError:
 
-                # if .fout file is not found in json dump, then it is
-                # ignored:
+                with open(fout + '.fout', 'r') as f:
+                    while True:
+                        row = f.readline()
+
+                        # just in case some rows have a newline while 
+                        # others don't?
+                        row = row.replace('\n', '')
+
+                        # this specificies the fast++ header, and the 
+                        # beginning of data:
+                        colnamestart = '#                  id'
+                        if colnamestart in row and not headerchecker:
+                            headerchecker = True
+                            header = row
+
+                        # append the row in .fout that corresponds to 
+                        # objID:
+                        if objID in row:
+                            rowlist.append(row)
+                            f.close()
+                            break
+                        
+                        # close file if at the end of file:
+                        elif not row:
+                            f.close()
+                            break
+
+            # if .fout file is not found in json dump, then it is
+            # ignored:
+            except KeyError:
                 print(
-                    fout + ' not found in ' + self.jsonname_fullname_objID +
+                    fout + ' not found in ' + self.fullname_obj_jdump +
                     '.json and will be ignored.'
                 )
-                objID = ''
                 pass
-            except:
+            except Exception as e:
                 raise
-            if not objID:
-                pass
-            with open(fout + '.fout', 'r') as f:
-                while True:
-                    row = f.readline()
-
-                    # just in case some rows have a newline while others don't?
-                    row = row.replace('\n', '')
-
-                    # this specificies the fast++ header, and the beginning
-                    # of data:
-                    if '#                  id' in row and not headerchecker:
-                        headerchecker = True
-                        header = row
-
-                    # append the row in .fout that corresponds to objID:
-                    if objID in row:
-                        rowlist.append(row)
-                        f.close()
-                        break
-                    
-                    # close file if at the end of file:
-                    elif not row:
-                        f.close()
-                        break
-        os.chdir(self.fdir)
 
         # create and write composite .fout file:
         compositefoutname = self.fname + '-composite'

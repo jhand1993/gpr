@@ -64,6 +64,8 @@ class SpectraGrabber(MasterGrabber):
                         filename, dtype=str, delimiter_whitespace=True
                     )
                 else:
+                    
+                    # tell them to use a different ext...
                     raise Exception('Use a different file extension.')
             os.chdir(self.olddir)
         except FileNotFoundError as e:
