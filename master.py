@@ -13,9 +13,6 @@ class GPRMaster:
     This is the master class for all classes in GPR.
     Includes json dump methods to handle data sharing
     between different grabbers, primers, and runners.
-
-    !!! Decision has been made to not rely on astropy
-    for unit conversion or calculations. !!!
     """
     def __init__(self):
         self.olddir = pl.Path(os.getcwd())
