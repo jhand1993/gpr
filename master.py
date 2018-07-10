@@ -3,6 +3,7 @@ import pathlib as pl
 import json
 import glob
 import subprocess
+import shutil
 
 import requests
 
@@ -110,6 +111,8 @@ class MasterGrabber(GPRMaster):
         This basically works like wget or curl.  This method
         is just a generic file downloader that iterates through
         'filelist' and downloads each file from 'url' to 'datadir'.
+
+        If 'url' is a list, then 
         """
         datadir = self.fdir / datadir
 
@@ -119,23 +122,54 @@ class MasterGrabber(GPRMaster):
 
         # grab existing files in 'datadir':
         localdata = glob.glob('*')
-        for f in filelist:
-            try:
-                # check and skip files that are already downloaded:
-                if f in localdata:
-                    print('\'' + f + '\' already downloaded.')
 
-                # if they are not downloaded, then download:
-                else:
-                    print('Downloading \'' + specname + '\'...')
-                    r = requests.get(
-                        url + f, allow_redirects=True, stream=True
-                        )
-                    with open(f, 'wb') as newf:
-                        shutil.copyfileobj(r.raw, newf)
-                        newf.close()
-            except Exception as e:
-                print(str(e))
+        # check to see if url is given as a list:
+        try:
+            if type(url) == list:
+
+                # make sure that the url list is the same length as
+                # the filelist:
+                if len(url) != len(filelist):
+                    print('url list and file list must be same length.')
+                    return False
+
+                for i in range(len(filelist)):
+                    # grab ith file and url:
+                    c_url = url[i]
+                    c_file = filelist[i]
+
+                    # check and skip files that are already downloaded:
+                    if c_file in localdata:
+                        print('\'' + c_file + '\' already downloaded.')
+
+                    # if they are not downloaded, then download:
+                    else:
+                        print('Downloading \'' + c_file + '\'...')
+                        r = requests.get(
+                            c_url + c_file,
+                            allow_redirects=True, stream=True
+                            )
+                        with open(c_file, 'wb') as newf:
+                            shutil.copyfileobj(r.raw, newf)
+                            newf.close()
+            else:
+                for f in filelist:
+                    # check and skip files that are already downloaded:
+                    if f in localdata:
+                        print('\'' + f + '\' already downloaded.')
+
+                    # if they are not downloaded, then download:
+                    else:
+                        print('Downloading \'' + f + '\'...')
+                        r = requests.get(
+                            url + f,
+                            allow_redirects=True, stream=True
+                            )
+                        with open(f, 'wb') as newf:
+                            shutil.copyfileobj(r.raw, newf)
+                            newf.close()
+        except Exception as e:
+            raise
         os.chdir(self.olddir)
         return True
         
@@ -183,6 +217,5 @@ class MasterRunner(GPRMaster):
             os.chdir(self.olddir)
             return True
         except Exception as e:
-            print(str(e))
             raise
         

@@ -42,10 +42,11 @@ class FastppRunner(MasterRunner):
 
         **kwargs={param1: value1, param2: value2, ...}
         """
-        os.chdir(self.fdir)
 
         # load .param data used by FAST++
+        os.chdir(self.fdir)
         paramdata = np.loadtxt(self.fname + '.param', dtype=str)
+        os.chdir(self.olddir)
 
         # grab .paramdata parameter:value pairs in dictionary:
         paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
@@ -58,7 +59,7 @@ class FastppRunner(MasterRunner):
                 self.primer.cat_maker(includephot=includephot)
 
                 # ftr : files to run
-                self.ftrlist = self.grabber.filelist
+                self.ftrlist = self.primer.filelist
                 for f in self.ftrlist:
 
                     # Need to remove file extension:
@@ -74,6 +75,7 @@ class FastppRunner(MasterRunner):
 
                     # change all .param values in new .param files specified
                     # in kwargs:
+                    os.chdir(self.fdir)
                     with open(fullname + '.param', 'w+') as f:
                         for key, value in paramdatadict.items():
                             newline = key + ' = ' + value + '\n'
@@ -91,6 +93,7 @@ class FastppRunner(MasterRunner):
                         self.fname + '.translate', 
                         fullname + '.translate'
                     )
+                    os.chdir(self.olddir)
 
                     # change self.cmd for each file fullname
                     self.cmd = [self.programname, fullname + '.param']
@@ -98,12 +101,11 @@ class FastppRunner(MasterRunner):
 
                 # recombine each fast++ run on individual spectra into
                 # new .fout file:
-                os.chdir(self.olddir)
                 grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
                 grouper.regrouper()
                 return True
             except Exception as e:
-                print(str(e))
+                raise
         else:
             try:
                 # make changes to .param file specificied by kwargs
@@ -116,4 +118,4 @@ class FastppRunner(MasterRunner):
                 self.runner(self.cmd)
                 return True
             except Exception as e:
-                print(str(e))
+                raise

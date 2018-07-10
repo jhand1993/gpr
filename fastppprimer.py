@@ -88,10 +88,6 @@ class FastppPrimer(MasterPrimer):
         self.filelist = []
         self.spectralist = []
 
-        # create dump dictionaries:
-        self.fs_dict = self.dumploader(self.fname_spec_jdump)
-        self.fo_dict = self.dumploader(self.fname_obj_jdump)
-
     def spec_maker(self, spectra):
         """
         Makes a <filename>.spec for each fits file to use with FAST++ using
@@ -107,6 +103,8 @@ class FastppPrimer(MasterPrimer):
         self.fs_dict = self.dumploader(self.fname_spec_jdump)
         self.fo_dict = self.dumploader(self.fname_obj_jdump)
         
+        os.chdir(self.fdir)
+
         # set local variables
         binarr = []
         binsize = self.binsize
@@ -217,6 +215,8 @@ class FastppPrimer(MasterPrimer):
             fullname + '.spec', mega_arr.T, 
             fmt=datafmt, delimiter='\t\t', header='\t\t'.join(specheader)
             )
+
+        os.chdir(self.olddir)
         return fullname, objID
 
     def spec_looper(self):
@@ -225,26 +225,42 @@ class FastppPrimer(MasterPrimer):
         If True, 'jsondump' creates a .json file with objID as keys and full
         .spec file name as values.
         """
-        self.json_fullname_obj = 'fullname-objID'
         if not self.spectralist:
-            # probably isn't populated, but no need to rerun this if it is.
-            self.filelist = list(self.dumploader(self.fname_obj_jdump).keys())
 
-            # Instantiate all spectra data files listed in self.filelist.
-            # this is the slowest part of the pipeline by far:
-            self.spectralist = [SpectraData(f) for f in self.filelist]
+            # probably isn't populated, but no need to rerun this if it is.
+            try:
+                self.filelist = list(
+                    self.dumploader(self.fname_obj_jdump).keys()
+                )
+
+                # Instantiate all spectra data files listed in self.filelist.
+                # this is the slowest part of the pipeline by far:
+                self.spectralist = [SpectraData(f) for f in self.filelist]
+            
+            # raise an error if dumps do not exist:
+            except AttributeError as e:
+                print('Make sure json dumps have been created for spectra',
+                'files.  Have you ran a grabber to get spectra files?')
+                raise
+
+            except Exception as e:
+                raise
+            
         os.chdir(self.fdir)
 
         # these lists are used to create a data dump:
         f_fullnamelist = []
         f_objIDlist = []
         for f in self.spectralist:
+
             # Not sure why I used 'f' here, but whatever.
             f_fullname, f_objID = self.spec_maker(f)
             f_fullnamelist.append(f_fullname)
             f_objIDlist.append(f_objID)
+
         # make a dump for fullnames and object ID:
-        self.dumpmaker(self.json_fullname_obj, f_fullnamelist, f_objIDlist)
+        self.dumpmaker(self.fullname_obj_jdump, f_fullnamelist, f_objIDlist)
+
         os.chdir(self.olddir)
         return f_fullnamelist
 
@@ -302,6 +318,8 @@ class FastppPrimer(MasterPrimer):
         # Save the dataframe as a .csv.
         newfilename = filename.split('.')[0] + '.cat'
         newdf.to_csv(newfilename, sep='\t', index=False)
+        print(newfilename + 'saved in ' + str(self.fdir) + '.')
+
         os.chdir(self.olddir)
         return True
 
