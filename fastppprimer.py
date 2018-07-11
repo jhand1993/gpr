@@ -110,13 +110,20 @@ class FastppPrimer(MasterPrimer):
         binarr = []
         binsize = self.binsize
         lambdastep = self.lambdastep
+
+        # check to make sure the wavelength range given is valid:
         if self.lambdarange[1] - self.lambdarange[0] <= 0:
             print('Invalid wavelength range.')
             return False
+
+        # calculate the total number of bins required:
         bincount = int(
             np.ceil(self.lambdarange[1] - self.lambdarange[0]) /
             (binsize * self.lambdastep)
             )
+
+        # make the bin array with size equal to the total number
+        # of rows ie 
         for i in range(bincount):
             x = 0
             while x < self.binsize:
@@ -175,7 +182,16 @@ class FastppPrimer(MasterPrimer):
             # until data wavelength is at least equal
             # to the minimum wavelength bin:
             while wl_data[j] < wl_lowmin:
-                j += 1
+
+                # We don't want j to index past the length of the
+                # wavelength data array 'wl_data':
+                if j + 1 == len(wl_data):
+                    print(spectra.filename)
+                    break
+                
+                # otherwise continue as planned:
+                else:
+                    j += 1
             
             # if the wavelength data is less than the
             # upper bound, add the data to current flux and
@@ -183,7 +199,15 @@ class FastppPrimer(MasterPrimer):
             while wl_data[j] < wl_highmax:
                 cf_data.append(f_data[j])
                 cferr_data.append(ferr_data[j])
-                j += 1
+
+                # We don't want j to index past the length of the
+                # wavelength data array 'wl_data':
+                if j + 1 == len(wl_data):
+                    break
+                
+                # otherwise continue as planned:
+                else:
+                    j += 1
 
             # calculate the mean value of fluxes in between
             # upper and lower wavelength bounds:

@@ -1,2 +1,5 @@
 .vscode
 test.py
+masterconfig.json
+Pipfile
+Pipfile.lock
