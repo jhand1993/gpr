@@ -168,6 +168,11 @@ class FastppPrimer(MasterPrimer):
         j = 0
         for k in range(bincount):
 
+            # Reset the mean/error sum to 'NaN' in case flux data
+            # does not extend past
+            f_mean = 'NaN'
+            ferr_sum = 'NaN'
+            
             # 'c' in front of a variable name implies 'current':
             cf_data = []
             cferr_data = []
@@ -209,12 +214,19 @@ class FastppPrimer(MasterPrimer):
                 else:
                     j += 1
 
-            # calculate the mean value of fluxes in between
-            # upper and lower wavelength bounds:
-            f_mean = np.mean(cf_data)
+            # if no data values exist in the bin, set
+            # f_mean and ferr_sum to 'NaN':
+            if len(cf_data) == 0:
+                    f_mean = 'NaN'
+                    ferr_sum = 'NaN'
 
-            # similarly, calculate total error:
-            ferr_sum = np.sqrt(np.sum([x**2 for x in cferr_data]))
+            else:
+                # calculate the mean value of fluxes in between
+                # upper and lower wavelength bounds:
+                f_mean = np.mean(cf_data)
+
+                # similarly, calculate total error:
+                ferr_sum = np.sqrt(np.sum([x**2 for x in cferr_data]))
 
             # set all rows in current bin to the average flux
             # and total error:
