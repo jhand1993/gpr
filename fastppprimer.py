@@ -1,6 +1,6 @@
 """
 spectra key and photo key will need to be specified...
-can't just hardcode specObjID and objID.
+can't just hardcode specobjid and objid.
 """
 import re
 import os
@@ -15,19 +15,24 @@ from master import MasterPrimer
 
 
 class SpectraData(MasterPrimer):
-    """
-    Will likely rewrite this to be inherited from astropy.io.fits.Fits
-    class, but this works for now.
+    """ Serves as a spectra object.
+
     """
     def __init__(self, filename):
+        """ Creates instance of spectra file 'filename'.
+
+        Args:
+            filename (str): name of the spectra data file to be loaded
+                into instantiated object.
+        """
         super().__init__()
         self.filename = filename
         try:
             # Grab and set spectra data path from dump:
-            specdatadir = self.dumploader(
-                self.specdatadir_name_jdump
-            )[self.specdatadir_name_jdump]
-            specdatadir = pl.Path(self.fdir) / specdatadir
+            specdatadir = self._dumploader(
+                self._specdatadir_jd
+            )[self._specdatadir_jd]
+            specdatadir = pl.Path(self._fdir) / specdatadir
             os.chdir(specdatadir)
 
             # empty spectradata array for later use:
@@ -46,17 +51,14 @@ class SpectraData(MasterPrimer):
 
             # converted to error from inverse variance
             self.fluxerr = 1 / np.sqrt(np.copy(self.fitsarr[:, 2])) 
-            os.chdir(self.olddir)
+            os.chdir(self._olddir)
         except Exception as e:
             raise
 
 
 class FastppPrimer(MasterPrimer):
-    """
-    This class instantiates priming methods for a given input datafile
-    containing the necessary columns to creat a .cat file. It can also
-    create the .spec files from respective fits files if said files
-    have already been grabbed.
+    """ Contains methods to prime data for use in FAST++
+
     """
     def __init__(
         self, 
@@ -64,21 +66,24 @@ class FastppPrimer(MasterPrimer):
         lambdastep=0.5, 
         lambdarange=(3800., 9000.)
     ):
+        """ Creates a priming object for FAST++.
+
+        Args:
+            binsize (int): This is the size bin in the .spec file used by
+                FAST++.  Default is 10.
+            lambdastep (float): This is the size of the wavelength interval
+                (in angstroms) of rows in the .spec file.  Default is 0.5.
+            lambdarange (tuple[float]): this tuple represents the entire
+                wavelength range spanned in the .spec file. Must have two 
+                elements.  Default is (3800., 9000.).            
+        """
         super().__init__()
 
-        # check to see if spectra data dictionary exists:
-        filecheck = str(self.dumpdir / self.specdatadir_name_jdump) + '.json'
-        if not os.path.isfile(filecheck):
-            raise Exception(filecheck + ' does not exist.')
-
         # create spectra data dictionary to grab spectra data directory:
-        specdatadict = self.dumploader(self.specdatadir_name_jdump)
-        self.specdatadir = self.fdir / str(
-            specdatadict[self.specdatadir_name_jdump]
+        specdatadict = self._dumploader(self._specdatadir_jd)
+        self._specdatadir = self._fdir / str(
+            specdatadict[self._specdatadir_jd]
         )
-
-        # create 'specdatadir' if it does not exist:
-        self.specdatadir.mkdir(exist_ok=True)
 
         # set keyword attributes:
         self.binsize = binsize
@@ -89,22 +94,37 @@ class FastppPrimer(MasterPrimer):
         self.filelist = []
         self.spectralist = []
 
-    def spec_maker(self, spectra):
-        """
-        Makes a <filename>.spec for each fits file to use with FAST++ using
-        refined spectra format:
-        https://github.com/cschreib/fastpp#better-treatment-of-spectra
-        ~1 Angstrom seems to be the spacing of spectra data from SDSS
-        spectra fits.  Numpy was used as opposed to pandas due to the
-        'double binning' required for FAST(++).
+    def spec_maker(self, spectra, customfullname=None):
+        """ Makes a .spec for the spectra object refined FAST++ format.
+
+        Attributes:
+            spectra (Spectra[obj]): Must be an instance of Spectra class.
+                Attributes of this class are used to create an array
+                that bins flux/flux error data into correct wavelength
+                intervals.
+
+            customfullname (str): You can specify a custom addon to the
+                fullname that is returned by the function.  Default is
+                None.
+
+        Returns:
+            fullname (str): This is the created file's name.  It combines
+                the original spectra data file name with the file name 
+                specified in the master configuration file.
+            
+            objid (str): This is the identifier relating the spectra file
+                to corresponding photometric data.
+            
+            
+
         """
 
         # create dump dictionaries.  Note these are only needed
-        # if spectra is beig used:
-        self.fs_dict = self.dumploader(self.fname_spec_jdump)
-        self.fo_dict = self.dumploader(self.fname_obj_jdump)
+        # if spectra is being used:
+        self.fs_dict = self._dumploader(self._fname_spec_jd)
+        self.fo_dict = self._dumploader(self._fname_obj_jd)
         
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
 
         # set local variables
         binarr = []
@@ -130,8 +150,8 @@ class FastppPrimer(MasterPrimer):
                 binarr.append(i)
                 x += 1
 
-        # find the objID corresponding to 'filename':
-        objID = self.fo_dict[str(spectra.filename)]
+        # find the objid corresponding to 'filename':
+        objid = self.fo_dict[str(spectra.filename)]
 
         # This is a format array for saving array to file:
         datafmt = [
@@ -140,7 +160,7 @@ class FastppPrimer(MasterPrimer):
         
         # This is the header for the .spec file:
         specheader = [
-            'bin', 'wl_low', 'wl_high', 'F' + str(objID), 'E' + str(objID)
+            'bin', 'wl_low', 'wl_high', 'F' + str(objid), 'E' + str(objid)
             ]
         
         # mega_arr is the array that will be saved to a .spec file:
@@ -186,7 +206,6 @@ class FastppPrimer(MasterPrimer):
                 # We don't want j to index past the length of the
                 # wavelength data array 'wl_data':
                 if j + 1 == len(wl_data):
-                    print(spectra.filename)
                     break
                 
                 # otherwise continue as planned:
@@ -212,7 +231,6 @@ class FastppPrimer(MasterPrimer):
             # if no data values exist in the bin, set
             # f_mean and ferr_sum to 'NaN':
             if len(cf_data) == 0:
-                print(print(spectra.filename), 'butt')
                 f_mean = 'NaN'
                 ferr_sum = 'NaN'
 
@@ -240,8 +258,14 @@ class FastppPrimer(MasterPrimer):
         # if any of the remaining values equal 0, set to NaN:
         mega_arr[1:, :][mega_arr[1:, :] == 0.] = np.nan
 
-        # only grab the filename from 'filename', not the filename + extension:
-        fullname = self.fname + '-' + spectra.filename.split('.')[0]
+        # only grab the filename from 'filename', not the filename + extension.
+        # If customfullname is given, then use that as the added string to the
+        # .spec file.
+        if customfullname:
+            fullname = customfullname + '-' + spectra.filename.split('.')[0]
+        
+        else:
+            fullname = self._fname + '-' + spectra.filename.split('.')[0]
 
         # note that the transpose of mega_arr is saved as file:
         np.savetxt(
@@ -249,89 +273,100 @@ class FastppPrimer(MasterPrimer):
             fmt=datafmt, delimiter='\t\t', header='\t\t'.join(specheader)
             )
 
-        os.chdir(self.olddir)
-        return fullname, objID
+        os.chdir(self._olddir)
+        return fullname, objid
 
     def spec_looper(self):
-        """
-        Creates .spec files for each fits file in attribute 'self.filelist'.
-        If True, 'jsondump' creates a .json file with objID as keys and full
-        .spec file name as values.
+        """ Creates .spec files for each fits file in attribute 'self.filelist'.
+
+        Returns:
+            f_fullnamelist (List[str]): This list contains all the full names of
+                the .spec files for each spectra file in the spectra file data
+                directory.
         """
         if not self.spectralist:
 
-            # probably isn't populated, but no need to rerun this if it is.
+            # Grab all the spectra file names in a list from dump:
             try:
                 self.filelist = list(
-                    self.dumploader(self.fname_obj_jdump).keys()
+                    self._dumploader(self._fname_obj_jd).keys()
                 )
 
                 # Instantiate all spectra data files listed in self.filelist.
-                # this is the slowest part of the pipeline by far:
+                # This is the slowest part of the pipeline by far:
                 self.spectralist = [SpectraData(f) for f in self.filelist]
             
             # raise an error if dumps do not exist:
-            except AttributeError as e:
-                print('Make sure json dumps have been created for spectra',
-                'files.  Have you ran a grabber to get spectra files?')
-                raise
+            except AttributeError e:
+                message = 'Make sure json dumps have been created for spectra' +
+                    ' files.  Have you ran a grabber to get spectra files?'
+                raise e(message)
 
             except Exception as e:
                 raise
             
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
 
         # these lists are used to create a data dump:
         f_fullnamelist = []
-        f_objIDlist = []
+        f_objidlist = []
         for f in self.spectralist:
 
             # Not sure why I used 'f' here, but whatever.
-            f_fullname, f_objID = self.spec_maker(f)
+            f_fullname, f_objid = self.spec_maker(f)
             f_fullnamelist.append(f_fullname)
-            f_objIDlist.append(f_objID)
+            f_objidlist.append(f_objid)
 
         # make a dump for fullnames and object ID:
-        self.dumpmaker(self.fullname_obj_jdump, f_fullnamelist, f_objIDlist)
+        self._dumpmaker(self._fullname_obj_jd, f_fullnamelist, f_objidlist)
 
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
         return f_fullnamelist
 
     def cat_maker(self, filename=None, includephot=True):
+        """ This creates a .cat file used by FAST++ for photometry.
+
+        Args:
+            filename (str): If specified, this is used as the photometric
+                data file to create a .cat file from.  Default is None.
+
+            includephot (bool): If true, .cat file will include photometric
+                information.  Otherwise, only redshift will be included.
+                Default is True.
         """
-        This creates a catalog used by FAST++ for photometry. It makes
-        heavy use of pandas dataframes 'filter' method to rename columns
-        to include the required 'F_' and 'E_' prefixes for running FAST++.
-        Miscelleneous columns are tacked at the end and are provided via
-        keyword argument 'includecolumns', which can be a string or a list.
-        Otherwise unnecessary columns will be deleted are deleted.
-        """
+
         # If 'filename' is None, then use default filename for grabbed
         # data:
         if not filename:
-            filename = self.fname + '.csv'
+            filename = self._fname + '.csv'
         
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
 
-        # read grabbed data:
-        df = pd.read_csv(filename, header=0, na_values='null')
+        try:
+            # read grabbed data:
+            df = pd.read_csv(filename, header=0, na_values='null')
+
+        except FileNotFoundError as e:
+            message = filename + 'was not found.  Did you forget to include' + 
+            ' the file extension?')
+            raise e(message)
         
         # this expression is used to grab the correct columns from df:
-        filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
+        filterexpression = r'\bobjid\b|\bspecobjid\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
 
         # filter out, rename, and break up df to be reorganized:
         df = df.filter(regex=filterexpression, axis=1)
-        df = df.rename(columns={'objID': '#ID'})
-        specObjID_df = df.loc[:, 'specObjID']
-        df = df.drop('specObjID', axis=1)
+        df = df.rename(columns={'objid': '#ID'})
+        specobjid_df = df.loc[:, 'specobjid']
+        df = df.drop('specobjid', axis=1)
         z_df = df.loc[:, 'z_spec']
         df = df.drop('z_spec', axis=1)
 
         # changes the NaN values to 0:
-        for i in range(len(specObjID_df)):
-            if np.isnan(specObjID_df[i]):
-                specObjID_df[i] = 0.
-        newdf = pd.concat([df, z_df, specObjID_df.astype(int)], axis=1)
+        for i in range(len(specobjid_df)):
+            if np.isnan(specobjid_df[i]):
+                specobjid_df[i] = 0.
+        newdf = pd.concat([df, z_df, specobjid_df.astype(int)], axis=1)
 
         # for each column, check to ee if values need to be changed:
         for col in list(newdf.columns):
@@ -351,37 +386,41 @@ class FastppPrimer(MasterPrimer):
         # Save the dataframe as a .csv.
         newfilename = filename.split('.')[0] + '.cat'
         newdf.to_csv(newfilename, sep='\t', index=False)
-        print(newfilename + 'saved in ' + str(self.fdir) + '.')
+        print(newfilename + 'saved in ' + str(self._fdir) + '.')
 
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
         return True
 
 
 class FastppFoutGrouper(MasterPrimer):
-    """
-    This is an odd class as it primes data after the application
-    FAST++ has been ran. Nevertheless it is it's own primer as it is
-    functionally separate from the other FAST++ primer class.
+    """ This contains method to group .fout files into one composite file.
     """
     def __init__(self, foutdir):
         super().__init__()
-        self.foutdir = self.fdir / foutdir
-
-        # create 'foutdir' if it does not exist:
-        self.foutdir.mkdir(exist_ok=True)
+        """ Initializes instance of FastppFoutGrouper class.
+        """
 
     def regrouper(self):
         """
         Combines the individual .fout files for each galaxy into a composite
         .fout file.
+
+        Returns:
+            bool: True if successful.
         """
-        # load fullname_obj dump:
-        self.fno_dict = self.dumploader(self.fullname_obj_jdump)
+
+        # load fullname_obj dump.  Raise error if dump does not exist:
+        try:
+            self.fno_dict = self._dumploader(self._fullname_obj_jd)
+        
+        except Exception as e:
+            message = 'Have you created .spec files for spectra data?'
+            raise e(message)
 
         # grab all .fout files created by fast++:
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
         foutlist = glob.glob('*.fout')
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
 
         # get rid of .fout extension in string:
         foutlist = [x.split('.')[0] for x in foutlist]
@@ -392,11 +431,11 @@ class FastppFoutGrouper(MasterPrimer):
         header = ''
         
         # loop through .fout files:
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
         for fout in foutlist:
             try:
-                # grab the objID from file name:
-                objID = self.fno_dict[fout]
+                # grab the objid from file name:
+                objid = self.fno_dict[fout]
 
                 with open(fout + '.fout', 'r') as f:
                     while True:
@@ -414,8 +453,8 @@ class FastppFoutGrouper(MasterPrimer):
                             header = row
 
                         # append the row in .fout that corresponds to 
-                        # objID:
-                        if objID in row:
+                        # objid:
+                        if objid in row:
                             rowlist.append(row)
                             f.close()
                             break
@@ -429,7 +468,7 @@ class FastppFoutGrouper(MasterPrimer):
             # ignored:
             except KeyError:
                 print(
-                    fout + ' not found in ' + self.fullname_obj_jdump +
+                    fout + ' not found in ' + self._fullname_obj_jd +
                     '.json and will be ignored.'
                 )
                 pass
@@ -437,11 +476,11 @@ class FastppFoutGrouper(MasterPrimer):
                 raise
 
         # create and write composite .fout file:
-        compositefoutname = self.fname + '-composite'
+        compositefoutname = self._fname + '-composite'
         with open(compositefoutname + '.fout', 'w+') as f:
             f.write(header + '\n')
             for row in rowlist:
                 f.write(row + '\n')
             f.close()
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
         return True

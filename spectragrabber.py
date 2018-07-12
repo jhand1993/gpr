@@ -14,72 +14,87 @@ from master import MasterGrabber
 
 
 class SpectraGrabber(MasterGrabber):
-    """
-    Base class for grabbing spectra data from indiviual image/files
-    for gieven targest.  
+    """ Base class for grabbing spectra data from indiviual image/files
+        for given targest.  
     """
     def __init__(self, specdatadir, filename=None):
+        """ Initializer method for class.
+
+        Args:
+            specdatadir (str): Spectra data directory that spectra data files
+                will be downloaed to.
+            
+            filename (str): User can provide a file containing information
+                needed to construct spectra data file names.  
+        """
         super().__init__()
-        self.specdatadir = self.fdir / specdatadir
+        self._specdatadir = self._fdir / specdatadir
 
-        # Make specdatadir if it does not exist:
-        self.specdatadir.mkdir(exist_ok=True)
+        # Make _specdatadir if it does not exist:
+        self._specdatadir.mkdir(exist_ok=True)
 
-        # Save 'specdatadir' into dump to be used with primer/grabber
-        self.dumpmaker(
-            self.specdatadir_name_jdump, 
-            [self.specdatadir_name_jdump], 
+        # Save '_specdatadir' into dump to be used with primer/grabber
+        self._dumpmaker(
+            self._specdatadir_jd, 
+            [self._specdatadir_jd], 
             [specdatadir]
         )
         self.filelist = []
         self.df = pd.DataFrame()
         try:
 
-            # try to make pandas dataframe from file 'fname'.
-            # If 'filename' is None, then use self.fname + .csv:
-            os.chdir(self.fdir)
+            # try to make pandas dataframe from file '_fname'.
+            # If 'filename' is None, then use self._fname + .csv:
+            os.chdir(self._fdir)
             if not filename:
-                self.df = pd.read_csv(self.fname + '.csv', dtype=str)
+                self.df = pd.read_csv(self._fname + '.csv', dtype=str)
 
             # make sure there is an extension in 'filename':
             elif '.' not in filename:
-                e = 'No file extension given for given filename.'
-                raise Exception(e)
+                message = 'No file extension given for given filename.'
+                raise Exception(message)
             else:
 
                 # check to make sure 'filename' exists
                 actualfile = glob.glob(filename)
                 if len(actualfile) == 0:
-                    e = filename + ' not found in ' + self.fdir + '.'
-                    raise FileNotFoundError(e)
+                    message = filename + ' not found in ' + self._fdir + '.'
+                    raise FileNotFoundError(message)
                 
                 # fine extension and load data appropriately:
                 ext = filename.split('.')[0]
-                if ext == '.csv':
+
+                if ext == 'csv':
                     self.df = pd.read_csv(filename, dtype=str)
-                elif ext == '.tsv':
+                elif ext == 'tsv':
                     self.df = pd.read_csv(filename, dtype=str, delimiter='\t')
-                elif ext == '.txt':
+                elif ext == 'txt':
                     self.df = pd.read_csv(
                         filename, dtype=str, delimiter_whitespace=True
                     )
+                elif ext = 'json':
+                    self.df = pd.read_json(filename, dtype=str)
+
                 else:
-                    
                     # tell them to use a different ext...
-                    raise Exception('Use a different file extension.')
-            os.chdir(self.olddir)
+                    raise Exception('Invalid file extension.')
+            os.chdir(self._olddir)
+
         except FileNotFoundError as e:
-            print(
-                'FileNotFoundError: ' + fname +
-                '.csv not found in ' + self.fdir + '.'
-            )
-            raise
+            message = 
+                'FileNotFoundError: ' + _fname +
+                '.csv not found in ' + self._fdir + '.'
+            
+            raise e(message)
         finally:
-            os.chdir(self.olddir)
+            os.chdir(self._olddir)
 
     def df_getter(self):
-        """
-        Prints and returns the dataframe 'self.df'.
+        """ Prints and returns the dataframe 'self.df'.
+
+        Returns:
+            DataFrame: Returns the dataframe created during 
+                instantiation.
         """
         print(self.df)
         return self.df
@@ -87,35 +102,42 @@ class SpectraGrabber(MasterGrabber):
 
 class SdssSpectraGrabber(SpectraGrabber):
     """
-    Inherits from 'SpectraGrabber', but tailored for grabbing data from
-    SDSS SAS.  Can be used to grab spectra from mjd, place, fiberID information
-    from a valid data file/table.  
+    Used for grabbing data (such as fits files) from SDSS SAS.  
     """
     def __init__(self, specdatadir, url):
+        """ Initializer method for class.
+
+        args:
+            specdatadir (str): Spectra data directory that spectra data files
+                will be downloaed to.
+        
+            url (str): SAS url for downloading fits files.
+        """
         super().__init__(specdatadir)
         self.url = url
 
     def sdss_spectra_grabber(self):
+        """ Builds sdss spectra data file names from data file and downloads 
+            cooresponding spectra files form SDSS.
+
+        Returns:
+            bool: True if successful.
+
         """
-        Grabs spectra data from SDSS DR14 from given datafram df.  df should
-        have 'mjd', 'plate', and 'fiberID' information. 'jsondump' creates
-        and stores dictionaries of specObjID:objID pairs and
-        specObjID:fits-file pairs for use creating spectra table for FAST++
-        during priming.
-        """
-        os.chdir(self.fdir)
+        os.chdir(self._fdir)
 
         try:
             # try and grab the necessary columns from 'df'
             mjds = np.array(self.df['mjd'], dtype=str)
             plates = np.array(self.df['plate'], dtype=str)
             fiberIDs = np.array(self.df['fiberID'], dtype=str)
-            specObjIDlist = list(self.df['specObjID'])
-            objIDlist = list(self.df['objID'])
-        except KeyError as k:
-            print(k)
-            print('Make sure downloaded data contains required columns.')
-            return False
+            specobjidlist = list(self.df['specobjid'])
+            objidlist = list(self.df['objid'])
+
+        except KeyError as e:
+            message = 'Make sure downloaded data contains required columns.'
+            raise e(message)
+
         except:
             raise
 
@@ -129,11 +151,11 @@ class SdssSpectraGrabber(SpectraGrabber):
         ebossurllist = []
         sdssurllist = []
         specnamelist = []
-        newspecObjIDlist = []
-        newobjIDlist = []
+        newspecobjidlist = []
+        newobjidlist = []
 
         # grab existing spectra files:
-        os.chdir(self.specdatadir)
+        os.chdir(self._specdatadir)
         localfiles = glob.glob('*')
 
         for i in range(rowcount):
@@ -144,14 +166,14 @@ class SdssSpectraGrabber(SpectraGrabber):
             fiberID = fiberIDs[i]
 
             # skip rows that do not have spectra data:
-            if 'nan' in str(specObjIDlist[i]) or int(mjd) <= 0:
+            if 'nan' in str(specobjidlist[i]) or int(mjd) <= 0:
                 pass
             else:
                 try:
-                    # Add objID and specObjID to their respetive new list so
+                    # Add objid and specobjid to their respetive new list so
                     # that the correct identifiers are provided for each spectra:
-                    newspecObjIDlist.append(specObjIDlist[i])
-                    newobjIDlist.append(objIDlist[i])
+                    newspecobjidlist.append(specobjidlist[i])
+                    newobjidlist.append(objidlist[i])
 
                     # 'plate' is stored as an int, but the 'plate' portion of
                     # the fits file name is a string of length 4, so zeroes may
@@ -194,14 +216,14 @@ class SdssSpectraGrabber(SpectraGrabber):
                 except Exception as e:
                     raise
         
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
 
         # grab the spectra data:
-        self.web_grabber(ebossurllist, self.specdatadir, ebosslist)
-        self.web_grabber(sdssurllist, self.specdatadir, sdsslist)
+        self.web_grabber(ebossurllist, self._specdatadir, ebosslist)
+        self.web_grabber(sdssurllist, self._specdatadir, sdsslist)
 
-        # create dumps related filenames to specObjID and objID:
-        self.dumpmaker(self.fname_spec_jdump, specnamelist, newspecObjIDlist)
-        self.dumpmaker(self.fname_obj_jdump, specnamelist, newobjIDlist)
+        # create dumps related filenames to specobjid and objid:
+        self._dumpmaker(self._fname_spec_jd, specnamelist, newspecobjidlist)
+        self._dumpmaker(self._fname_obj_jd, specnamelist, newobjidlist)
         
         return True

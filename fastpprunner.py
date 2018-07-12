@@ -22,7 +22,7 @@ class FastppRunner(MasterRunner):
 
         # This is the default fast++ command:
         if not cmd:
-            self.cmd = [self.programname, self.fname + '.param']
+            self.cmd = [self.programname, self._fname + '.param']
 
         # if string is given as 'cmd', split it into a list:
         elif cmd and type(cmd) == str:
@@ -44,9 +44,9 @@ class FastppRunner(MasterRunner):
         """
 
         # load .param data used by FAST++
-        os.chdir(self.fdir)
-        paramdata = np.loadtxt(self.fname + '.param', dtype=str)
-        os.chdir(self.olddir)
+        os.chdir(self._fdir)
+        paramdata = np.loadtxt(self._fname + '.param', dtype=str)
+        os.chdir(self._olddir)
 
         # grab .paramdata parameter:value pairs in dictionary:
         paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
@@ -63,19 +63,19 @@ class FastppRunner(MasterRunner):
                 for f in self.ftrlist:
 
                     # Need to remove file extension:
-                    fullname = self.fname + '-' + f.split('.')[0]
+                    fullname = self._fname + '-' + f.split('.')[0]
 
                     # make changes to .param file specificied by kwargs
                     if kwargs:
                         for key, value in kwargs.items():
-                            paramdatadict[key] = value
+                            paramdatadict[key] = str(value)
 
                     # 'CATALOG' key always needs to be changed.
                     paramdatadict['CATALOG'] = fullname
 
                     # change all .param values in new .param files specified
                     # in kwargs:
-                    os.chdir(self.fdir)
+                    os.chdir(self._fdir)
                     with open(fullname + '.param', 'w+') as f:
                         for key, value in paramdatadict.items():
                             newline = key + ' = ' + value + '\n'
@@ -84,16 +84,16 @@ class FastppRunner(MasterRunner):
                     
                     # copy the .cat file with new file name:
                     newcat = shutil.copyfile(
-                        self.fname + '.cat', 
+                        self._fname + '.cat', 
                         fullname + '.cat'
                     )
 
                     # copy the .translate file with new file name:
                     newtranslate = shutil.copyfile(
-                        self.fname + '.translate', 
+                        self._fname + '.translate', 
                         fullname + '.translate'
                     )
-                    os.chdir(self.olddir)
+                    os.chdir(self._olddir)
 
                     # change self.cmd for each file fullname
                     self.cmd = [self.programname, fullname + '.param']

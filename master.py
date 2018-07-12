@@ -9,13 +9,15 @@ import requests
 
 
 class GPRMaster:
-    """
-    This is the master class for all classes in GPR.
-    Includes json dump methods to handle data sharing
-    between different grabbers, primers, and runners.
+    """ This is the master class for all grabbers, runners, and primers
+        in the GPR framework.
     """
     def __init__(self):
-        self.olddir = pl.Path(os.getcwd())
+        """ When initialized, configurations are loaded from master 
+            configuration json file, and required subdirectores are
+            made.
+        """
+        self._olddir = pl.Path(os.getcwd())
 
         # change to code directory and load masterconfig.json:
         codedir = os.path.dirname(os.path.realpath(__file__))
@@ -25,38 +27,47 @@ class GPRMaster:
         with open('masterconfig.json') as f:
             masterconfig = json.load(f)
             f.close
-        os.chdir(self.olddir)
-        self.fname = masterconfig['file name']
+        os.chdir(self._olddir)
+        self._fname = masterconfig['file name']
         configfilepath = masterconfig['file directory']
 
-        # handle various file directory formats.
+        # handle various file directory formats for Windows/Unix-like:
         if '~' in configfilepath or '~user' in configfilepath:
-            self.fdir = pl.Path(os.path.expanduser(configfilepath))
+            self._fdir = pl.Path(os.path.expanduser(configfilepath))
         elif not os.path.isdir(configfilepath):
             raise Exception(configfilepath + ' is not a valid directory.')
         else:
-            self.fdir = pl.Path(configfilepath)
+            self._fdir = pl.Path(configfilepath)
 
         # set file directory and dump directory as attributes:
-        self.fdir = pl.Path(self.fdir)
+        self._fdir = pl.Path(self._fdir)
 
-        # make dump dir
-        self.dumpdir = self.fdir / masterconfig['dump subdirectory name']
+        # make dump directory attribute:
+        self._dumpdir = self._fdir / masterconfig['dump subdirectory name']
 
         # make dump directory if they do not already exist:
-        self.dumpdir.mkdir(exist_ok=True)
+        self._dumpdir.mkdir(exist_ok=True)
 
         # Dump names should not change
-        self.specdatadir_name_jdump = 'specdatadir-name'
-        self.fname_spec_jdump = 'filename-specObjID'
-        self.fname_obj_jdump = 'filename-objID'
-        self.fullname_obj_jdump = 'fullname-objID'
+        self._specdatadir_jd = 'specdatadir-name'
+        self._fname_spec_jd = 'filename-specObjID'
+        self._fname_obj_jd = 'filename-objID'
+        self._fullname_obj_jd = 'fullname-objID'
 
-    def dumpmaker(self, dumpname, keys, values):
+    def _dumpmaker(self, dumpname, keys, values):
+        """ Generic json dump creater.
+
+        Args:
+            dumpname (str): Name of json dump to be created.
+
+            keys (List): List of keys for json dump data.
+
+            values (List): List of values for json dump data.
+
+        Returns:
+            bool: True if succesful.
         """
-        Generic json dump creater.
-        """
-        os.chdir(self.dumpdir)
+        os.chdir(self._dumpdir)
 
         # create a dictionary from keys and values given:
         dumpdict = dict(zip(keys, values))
@@ -71,17 +82,22 @@ class GPRMaster:
             f.close()
         print(
             '\'' + dumpname + '.json\' dumped in\'',
-            str(self.dumpdir) + '\'.'
+            str(self._dumpdir) + '\'.'
         )
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
         return True
 
-    def dumploader(self, dumpname):
-        """
-        Generic json dump loader.
+    def _dumploader(self, dumpname):
+        """ Generic json dump loader.
+
+        Args:
+            dumpname (str): Name of dump to be loaded into dictionary
+
+        Returns:
+            dumpdict (Dict): Dictionary loaded from json dump.
         """
         try:
-            os.chdir(self.dumpdir)
+            os.chdir(self._dumpdir)
 
             # remove '.' from dumpname is given:
             if '.' in dumpname:
@@ -90,28 +106,38 @@ class GPRMaster:
             # load dump dictionary from json file 'dumpname':
             with open(dumpname + '.json', 'r') as f:
                 dumpdict = json.load(f)
-            os.chdir(self.olddir)
+
+            os.chdir(self._olddir)
             return dumpdict
         except Exception as e:
-            print(str(e))
+            raise
 
         
 class MasterGrabber(GPRMaster):
-    """
-    This is the master class for all grabbers. 
+    """ This is the master class for all grabbers. 
     """
     def __init__(self):
+        """ Initializer method for class.
+        """
         super().__init__()
 
     def web_grabber(self, url, datadir, filelist):
-        """
-        This basically works like wget or curl.  This method
-        is just a generic file downloader that iterates through
-        'filelist' and downloads each file from 'url' to 'datadir'.
+        """ This basically works like wget or curl.  
 
-        If 'url' is a list, then 
+        Args:
+            url (str or List[str]): Url used to download data, or list of
+                urls corresponding to each file in filelist.
+
+            datadir (str): Subdirectory where downloaded files will be
+                downloaded to.
+            
+            filelist (List[str]): List of file names that are downloaded
+                from given url(s).
+
+        Returns:
+            bool: True is successful.
         """
-        datadir = self.fdir / datadir
+        datadir = self._fdir / datadir
 
         # make datadir if it does not exist:
         datadir.mkdir(exist_ok=True)
@@ -127,8 +153,8 @@ class MasterGrabber(GPRMaster):
                 # make sure that the url list is the same length as
                 # the filelist:
                 if len(url) != len(filelist):
-                    print('url list and file list must be same length.')
-                    return False
+                    e = 'Url list and file list must be the same length.'
+                    raise Exception(e)
 
                 for i in range(len(filelist)):
                     # grab ith file and url:
@@ -167,40 +193,53 @@ class MasterGrabber(GPRMaster):
                             newf.close()
         except Exception as e:
             raise
-        os.chdir(self.olddir)
+        os.chdir(self._olddir)
         return True
         
     
 class MasterPrimer(GPRMaster):
-    """
-    This is the master class for all primers.
+    """ This is the master class for all primers.
     """
     def __init__(self):
+        """ Initializer method for class.
+        """
         super().__init__()
     
     def nm_to_mj(self, x):
         """
         Converts nanomaggies to microjanksys.
+
+        Args: 
+           x (float): Input flux in nanomaggies.
+
+        Returns:
+            float: Flux in microjanksys.
         """
         return x * 3.631
 
 
 class MasterRunner(GPRMaster):
-    """
-    This is the master class for all runners.
+    """ This is the master class for all runners.
     """
     def __init__(self):
+        """ Initializer method for class.
+        """
         super().__init__()
 
     def runner(self, cmd):
-        """
-        This is a wrapper or opening a pipe via subprocess. The
-        input 'cmd' and be either a shell command or, preferably,
-        a list containing the command and parameters.
+        """ This is a wrapper for running program via subprocesses.
+
+        Args:
+            cmd (str or List[str]): If string, cmd is converted to a
+                list for use in Popen instance.  Otherwise, list is
+                used as command argument for Popen instance.
+
+        Returns:
+            bool: True if successfull.
         """
         try:
             # convert command string to list if needed:
-            os.chdir(self.fdir)
+            os.chdir(self._fdir)
             if type(cmd) == str:
                 cmd = cmd.split(' ')
 
@@ -211,7 +250,7 @@ class MasterRunner(GPRMaster):
 
             # wait for it to finish:
             process.wait()
-            os.chdir(self.olddir)
+            os.chdir(self._olddir)
             return True
         except Exception as e:
             raise
