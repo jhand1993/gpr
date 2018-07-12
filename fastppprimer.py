@@ -167,11 +167,6 @@ class FastppPrimer(MasterPrimer):
         # This is a counter used apart from the for-loop count:
         j = 0
         for k in range(bincount):
-
-            # Reset the mean/error sum to 'NaN' in case flux data
-            # does not extend past
-            f_mean = 'NaN'
-            ferr_sum = 'NaN'
             
             # 'c' in front of a variable name implies 'current':
             cf_data = []
@@ -217,8 +212,9 @@ class FastppPrimer(MasterPrimer):
             # if no data values exist in the bin, set
             # f_mean and ferr_sum to 'NaN':
             if len(cf_data) == 0:
-                    f_mean = 'NaN'
-                    ferr_sum = 'NaN'
+                print(print(spectra.filename), 'butt')
+                f_mean = 'NaN'
+                ferr_sum = 'NaN'
 
             else:
                 # calculate the mean value of fluxes in between

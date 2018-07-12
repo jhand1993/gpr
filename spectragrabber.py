@@ -129,6 +129,8 @@ class SdssSpectraGrabber(SpectraGrabber):
         ebossurllist = []
         sdssurllist = []
         specnamelist = []
+        newspecObjIDlist = []
+        newobjIDlist = []
 
         # grab existing spectra files:
         os.chdir(self.specdatadir)
@@ -146,6 +148,10 @@ class SdssSpectraGrabber(SpectraGrabber):
                 pass
             else:
                 try:
+                    # Add objID and specObjID to their respetive new list so
+                    # that the correct identifiers are provided for each spectra:
+                    newspecObjIDlist.append(specObjIDlist[i])
+                    newobjIDlist.append(objIDlist[i])
 
                     # 'plate' is stored as an int, but the 'plate' portion of
                     # the fits file name is a string of length 4, so zeroes may
@@ -195,7 +201,7 @@ class SdssSpectraGrabber(SpectraGrabber):
         self.web_grabber(sdssurllist, self.specdatadir, sdsslist)
 
         # create dumps related filenames to specObjID and objID:
-        self.dumpmaker(self.fname_spec_jdump, specnamelist, specObjIDlist)
-        self.dumpmaker(self.fname_obj_jdump, specnamelist, objIDlist)
+        self.dumpmaker(self.fname_spec_jdump, specnamelist, newspecObjIDlist)
+        self.dumpmaker(self.fname_obj_jdump, specnamelist, newobjIDlist)
         
         return True
