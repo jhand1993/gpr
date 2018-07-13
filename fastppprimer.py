@@ -297,9 +297,8 @@ class FastppPrimer(MasterPrimer):
                 self.spectralist = [SpectraData(f) for f in self.filelist]
             
             # raise an error if dumps do not exist:
-            except AttributeError e:
-                message = 'Make sure json dumps have been created for spectra' +
-                    ' files.  Have you ran a grabber to get spectra files?'
+            except AttributeError as e:
+                message = 'Make sure dumps have been created for spectra files.' 
                 raise e(message)
 
             except Exception as e:
@@ -347,18 +346,18 @@ class FastppPrimer(MasterPrimer):
             df = pd.read_csv(filename, header=0, na_values='null')
 
         except FileNotFoundError as e:
-            message = filename + 'was not found.  Did you forget to include' + 
-            ' the file extension?')
-            raise e(message)
+            raise
         
         # this expression is used to grab the correct columns from df:
-        filterexpression = r'\bobjid\b|\bspecobjid\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
+        filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
 
         # filter out, rename, and break up df to be reorganized:
+        print(df.columns)
         df = df.filter(regex=filterexpression, axis=1)
-        df = df.rename(columns={'objid': '#ID'})
-        specobjid_df = df.loc[:, 'specobjid']
-        df = df.drop('specobjid', axis=1)
+        df = df.rename(columns={'objID': '#ID'})
+        print(df)
+        specobjid_df = df.loc[:, 'specObjID']
+        df = df.drop('specObjID', axis=1)
         z_df = df.loc[:, 'z_spec']
         df = df.drop('z_spec', axis=1)
 

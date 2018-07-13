@@ -72,7 +72,7 @@ class SpectraGrabber(MasterGrabber):
                     self.df = pd.read_csv(
                         filename, dtype=str, delimiter_whitespace=True
                     )
-                elif ext = 'json':
+                elif ext == 'json':
                     self.df = pd.read_json(filename, dtype=str)
 
                 else:
@@ -81,11 +81,8 @@ class SpectraGrabber(MasterGrabber):
             os.chdir(self._olddir)
 
         except FileNotFoundError as e:
-            message = 
-                'FileNotFoundError: ' + _fname +
-                '.csv not found in ' + self._fdir + '.'
-            
-            raise e(message)
+            raise
+
         finally:
             os.chdir(self._olddir)
 
@@ -131,12 +128,12 @@ class SdssSpectraGrabber(SpectraGrabber):
             mjds = np.array(self.df['mjd'], dtype=str)
             plates = np.array(self.df['plate'], dtype=str)
             fiberIDs = np.array(self.df['fiberID'], dtype=str)
-            specobjidlist = list(self.df['specobjid'])
-            objidlist = list(self.df['objid'])
+            specobjidlist = list(self.df['specObjID'])
+            objidlist = list(self.df['objID'])
 
-        except KeyError as e:
-            message = 'Make sure downloaded data contains required columns.'
-            raise e(message)
+        except KeyError:
+            print('Make sure downloaded data contains required columns.')
+            raise
 
         except:
             raise
