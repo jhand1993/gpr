@@ -60,41 +60,26 @@ class FastppPrimer(MasterPrimer):
     """ Contains methods to prime data for use in FAST++
 
     """
-    def __init__(
-        self, 
-        binsize=10, 
-        lambdastep=0.5, 
-        lambdarange=(3800., 9000.)
-    ):
-        """ Creates a priming object for FAST++.
-
-        Args:
-            binsize (int): This is the size bin in the .spec file used by
-                FAST++.  Default is 10.
-            lambdastep (float): This is the size of the wavelength interval
-                (in angstroms) of rows in the .spec file.  Default is 0.5.
-            lambdarange (tuple[float]): this tuple represents the entire
-                wavelength range spanned in the .spec file. Must have two 
-                elements.  Default is (3800., 9000.).            
+    def __init__(self):
+        """ Creates a priming object for FAST++.        
         """
         super().__init__()
 
-        # create spectra data dictionary to grab spectra data directory:
+        # load spectra data dictionary and grab spectra data directory:
         specdatadict = self._dumploader(self._specdatadir_jd)
         self._specdatadir = self._fdir / str(
             specdatadict[self._specdatadir_jd]
         )
 
-        # set keyword attributes:
-        self.binsize = binsize
-        self.lambdarange = lambdarange
-        self.lambdastep = lambdastep
-
         # empty file list and spectra list for later use:
         self.filelist = []
         self.spectralist = []
 
-    def spec_maker(self, spectra, customfullname=None):
+    def spec_maker(
+        self, spectra, 
+        customfullname=None, 
+        binsize=10, lambdastep=0.5, lambdarange=(3800., 9000.)
+    ):
         """ Makes a .spec for the spectra object refined FAST++ format.
 
         Attributes:
@@ -107,6 +92,16 @@ class FastppPrimer(MasterPrimer):
                 fullname that is returned by the function.  Default is
                 None.
 
+            binsize (int): This is the size bin in the .spec file used by
+                FAST++.  Default is 10.
+
+            lambdastep (float): This is the size of the wavelength interval
+                (in angstroms) of rows in the .spec file.  Default is 0.5.
+
+            lambdarange (tuple[float]): this tuple represents the entire
+                wavelength range spanned in the .spec file. Must have two 
+                elements.  Default is (3800., 9000.).    
+
         Returns:
             fullname (str): This is the created file's name.  It combines
                 the original spectra data file name with the file name 
@@ -114,9 +109,6 @@ class FastppPrimer(MasterPrimer):
             
             objid (str): This is the identifier relating the spectra file
                 to corresponding photometric data.
-            
-            
-
         """
 
         # create dump dictionaries.  Note these are only needed
@@ -126,27 +118,24 @@ class FastppPrimer(MasterPrimer):
         
         os.chdir(self._fdir)
 
-        # set local variables
         binarr = []
-        binsize = self.binsize
-        lambdastep = self.lambdastep
 
         # check to make sure the wavelength range given is valid:
-        if self.lambdarange[1] - self.lambdarange[0] <= 0:
+        if lambdarange[1] - lambdarange[0] <= 0:
             print('Invalid wavelength range.')
             return False
 
         # calculate the total number of bins required:
         bincount = int(
-            np.ceil(self.lambdarange[1] - self.lambdarange[0]) /
-            (binsize * self.lambdastep)
+            np.ceil(lambdarange[1] - lambdarange[0]) /
+            (binsize * lambdastep)
             )
 
         # make the bin array with size equal to the total number
         # of rows ie 
         for i in range(bincount):
             x = 0
-            while x < self.binsize:
+            while x < binsize:
                 binarr.append(i)
                 x += 1
 
@@ -168,12 +157,9 @@ class FastppPrimer(MasterPrimer):
         rowcount = len(binarr)
 
         # create and append wl_low and wl_high columns:
-        wlow = np.linspace(
-            self.lambdarange[0], self.lambdarange[1], rowcount + 1
-            )[:-1]
-        whigh = np.linspace(
-            self.lambdarange[0], self.lambdarange[1], rowcount + 1
-            )[1:]
+        wlow = np.linspace(lambdarange[0], lambdarange[1], rowcount + 1)[:-1]
+
+        whigh = np.linspace(lambdarange[0], lambdarange[1], rowcount + 1)[1:]
         mega_arr = np.append(mega_arr, np.expand_dims(wlow, 0), axis=0)
         mega_arr = np.append(mega_arr, np.expand_dims(whigh, 0), axis=0)
 
@@ -351,11 +337,9 @@ class FastppPrimer(MasterPrimer):
         # this expression is used to grab the correct columns from df:
         filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
 
-        # filter out, rename, and break up df to be reorganized:
-        print(df.columns)
+        # filter out, rename, and break up dataframe to be reorganized:
         df = df.filter(regex=filterexpression, axis=1)
         df = df.rename(columns={'objID': '#ID'})
-        print(df)
         specobjid_df = df.loc[:, 'specObjID']
         df = df.drop('specObjID', axis=1)
         z_df = df.loc[:, 'z_spec']
@@ -385,7 +369,7 @@ class FastppPrimer(MasterPrimer):
         # Save the dataframe as a .csv.
         newfilename = filename.split('.')[0] + '.cat'
         newdf.to_csv(newfilename, sep='\t', index=False)
-        print(newfilename + 'saved in ' + str(self._fdir) + '.')
+        print(newfilename + ' saved in ' + str(self._fdir) + '.')
 
         os.chdir(self._olddir)
         return True
@@ -444,7 +428,7 @@ class FastppFoutGrouper(MasterPrimer):
                         # others don't?
                         row = row.replace('\n', '')
 
-                        # this specificies the fast++ header, and the 
+                        # this specifies the FAST++ header and the 
                         # beginning of data:
                         colnamestart = '#                  id'
                         if colnamestart in row and not headerchecker:
@@ -455,12 +439,10 @@ class FastppFoutGrouper(MasterPrimer):
                         # objid:
                         if objid in row:
                             rowlist.append(row)
-                            f.close()
                             break
                         
                         # close file if at the end of file:
                         elif not row:
-                            f.close()
                             break
 
             # if .fout file is not found in json dump, then it is
@@ -478,8 +460,10 @@ class FastppFoutGrouper(MasterPrimer):
         compositefoutname = self._fname + '-composite'
         with open(compositefoutname + '.fout', 'w+') as f:
             f.write(header + '\n')
+
+            # loop through all objects and append rows:
             for row in rowlist:
                 f.write(row + '\n')
-            f.close()
+
         os.chdir(self._olddir)
         return True

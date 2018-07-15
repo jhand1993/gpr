@@ -1,3 +1,9 @@
+"""
+Any file name should be attributes of a class.  Otherwise, arguments
+and keyword arguments should be used in methods instead of explicit
+class attributes.  If a method is used to create a file, then that
+file name should instead be an argument, not an attribute.
+"""
 import os
 import pathlib as pl
 import json
@@ -12,6 +18,7 @@ class GPRMaster:
     """ This is the master class for all grabbers, runners, and primers
         in the GPR framework.
     """
+
     def __init__(self):
         """ When initialized, configurations are loaded from master 
             configuration json file, and required subdirectores are
@@ -26,7 +33,7 @@ class GPRMaster:
         # load configuration data from master configuration:
         with open('masterconfig.json') as f:
             masterconfig = json.load(f)
-            f.close
+
         os.chdir(self._olddir)
         self._fname = masterconfig['file name']
         configfilepath = masterconfig['file directory']
@@ -79,7 +86,7 @@ class GPRMaster:
         # save json file with dump data:
         with open(dumpname + '.json', 'w+') as f:
             json.dump(dumpdict, f)
-            f.close()
+
         print(
             '\'' + dumpname + '.json\' dumped in\'',
             str(self._dumpdir) + '\'.'
@@ -174,7 +181,7 @@ class MasterGrabber(GPRMaster):
                             )
                         with open(c_file, 'wb') as newf:
                             shutil.copyfileobj(r.raw, newf)
-                            newf.close()
+
             else:
                 for f in filelist:
                     # check and skip files that are already downloaded:
@@ -190,7 +197,7 @@ class MasterGrabber(GPRMaster):
                             )
                         with open(f, 'wb') as newf:
                             shutil.copyfileobj(r.raw, newf)
-                            newf.close()
+
         except Exception as e:
             raise
         os.chdir(self._olddir)

@@ -16,88 +16,100 @@ class FastppRunner(MasterRunner):
     """
     Contains methods to run FAST++.
     """
-    def __init__(self, cmd=None):
+    def __init__(self, paramfile=None, oldfast=False):
+        """ Init method for FastppRunner object.
+
+        Args:
+            paramfile (str): User can specify a .param file instead of
+                assumed default self._fname.param.  Note that all other files
+                used or created by FAST++ will use this name as well.
+                Default is None.
+            
+            oldfast (bool): Use IDL FAST instead of FAST++.  Default is False.
+        """
+
         super().__init__()
-        self.programname = 'fast++'
 
-        # This is the default fast++ command:
-        if not cmd:
-            self.cmd = [self.programname, self._fname + '.param']
-
-        # if string is given as 'cmd', split it into a list:
-        elif cmd and type(cmd) == str:
-            self.cmd = cmd.split(' ')
+        # specify the correct program name:
+        if oldfast:
+            elf.programname = 'fast'
+        else:
+            self.programname = 'fast++'
         
-        # otherwise, set 'cmd' to 'self.cmd':
-        elif cmd :
-            self.cmd = cmd
+        # set paramfile attribute:
+        if paramfile:
+            self.paramfile = paramfile.split('.')[0]
+        else:
+            self.paramfile = self._fname
         
         # instantiate primer object as attribute:
         self.primer = fastppprimer.FastppPrimer()
         
-    def fastpp_runner(self, includephot=True, includespec=True, **kwargs):
+    def fastpp_runner(
+        self, includephot=True, includespec=True, cmd=None, **kwargs
+    ):
+        """ Runs FAST++
+
+        Args:
+            includephot (bool): If true, then photometry will be included when
+                running FAST++.  Default is True.
+
+            includespec (bool): If true, then spectra data will be included when
+                running FAST++.  FAST++ will be ran on each object with spectra
+                individually and will ignore other objects.  Results of the
+                individual runs are then recombined.  Default is True.
+
+            cmd (str or List[str]): User can provide a custom terminal command
+                to run FAST++.  If cmd is a string, then it will be split into
+                a list of strings.  If cmd is None, then the command will be
+                'fast++ <paramfile>.param.  Default is None.
+
+            kwargs: User can specify other parameters to change in the in the
+                FAST++ .param file.
+
+            Returns:
+                bool: True if successful.        
         """
-        Nested function used to loop through all the files.  This will
-        be rewritten with **kwargs for each parameter in .param file:
+        # This is the default FAST++ command:
+        if not cmd:
+            cmd = [self.programname, self._fname + '.param']
 
-        **kwargs={param1: value1, param2: value2, ...}
-        """
+        # if string is given as 'cmd', split it into a list:
+        elif cmd and type(cmd) == str:
+            cmd = cmd.split(' ')
 
-        # load .param data used by FAST++
-        os.chdir(self._fdir)
-        paramdata = np.loadtxt(self._fname + '.param', dtype=str)
-        os.chdir(self._olddir)
-
-        # grab .paramdata parameter:value pairs in dictionary:
-        paramdatadict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
-
-        # if spectra are included, then loop through each:
+        # if spectra are included, then loop through each object:
         if includespec:
             try:
-                # prime data for fast++:
+                # prime data for FAST++:
                 self.primer.spec_looper()
                 self.primer.cat_maker(includephot=includephot)
 
-                # ftr : files to run
+                # ftr : files to run:
                 self.ftrlist = self.primer.filelist
                 for f in self.ftrlist:
 
-                    # Need to remove file extension:
-                    fullname = self._fname + '-' + f.split('.')[0]
+                    # Remove file extension and create new file name:
+                    fullname = self.paramfile + '-' + f.split('.')[0]
 
-                    # make changes to .param file specificied by kwargs
-                    if kwargs:
-                        for key, value in kwargs.items():
-                            paramdatadict[key] = str(value)
-
-                    # 'CATALOG' key always needs to be changed.
-                    paramdatadict['CATALOG'] = fullname
-
-                    # change all .param values in new .param files specified
-                    # in kwargs:
-                    os.chdir(self._fdir)
-                    with open(fullname + '.param', 'w+') as f:
-                        for key, value in paramdatadict.items():
-                            newline = key + ' = ' + value + '\n'
-                            f.write(newline)
-                        f.close()
+                    self._param_changer(fullname, kwargs)
                     
                     # copy the .cat file with new file name:
                     newcat = shutil.copyfile(
-                        self._fname + '.cat', 
+                        self.paramfile + '.cat', 
                         fullname + '.cat'
                     )
 
                     # copy the .translate file with new file name:
                     newtranslate = shutil.copyfile(
-                        self._fname + '.translate', 
+                        self.paramfile + '.translate', 
                         fullname + '.translate'
                     )
                     os.chdir(self._olddir)
 
-                    # change self.cmd for each file fullname
-                    self.cmd = [self.programname, fullname + '.param']
-                    self.runner(self.cmd)
+                    # change self.cmd for each file fullname:
+                    cmd = [self.programname, fullname + '.param']
+                    self.runner(cmd)
 
                 # recombine each fast++ run on individual spectra into
                 # new .fout file:
@@ -108,14 +120,60 @@ class FastppRunner(MasterRunner):
                 raise
         else:
             try:
-                # make changes to .param file specificied by kwargs
-                if kwargs:
-                    for key, value in kwargs.items():
-                        paramdatadict[key] = value
+                self._param_changer(self.paramfile, kwargs)
                 
                 # make new .cat file:
                 self.primer.cat_maker(includephot=includephot)
-                self.runner(self.cmd)
+                self.runner(cmd)
                 return True
             except Exception as e:
                 raise
+
+    def _param_changer(self, filename, paramchanges):
+        """ Internal method used to create FAST++ .param file with necessary
+            and provided changes.
+
+        Args:
+            filename (str): The catalog name in 'paramdict' will be changed 
+                to the value of this filename.
+
+            paramchanges (Dict[str]): This dict is generated from kwargs
+                given by the user for other .param paramters to change.
+
+        Returns:
+            bool: True if successful.
+        """
+
+        # load .param data used by FAST++:
+        os.chdir(self._fdir)
+
+        # load .param data used by FAST++:
+        paramdata = np.loadtxt(filename + '.param', dtype=str) 
+
+        # grab .paramdata parameter:value pairs in dictionary:
+        paramdict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
+    
+        try:
+            # 'CATALOG' argument always needs to be changed:
+            paramdict['CATALOG'] = self.paramfile
+
+            # make changes to .param file specificied by kwargs
+            if paramchanges:
+                for key, value in paramchanges.items():
+                    paramdict[key] = value
+            
+            # change all .param values in new .param files specified
+            # in kwargs:
+            with open(filename + '.param', 'w+') as f:
+                for key, value in paramdict.items():
+                    newline = key + ' = ' + value + '\n'
+                    f.write(newline)
+            
+            os.chdir(self._olddir)
+            return True
+        
+        except Exception as e:
+            raise
+
+            
+
