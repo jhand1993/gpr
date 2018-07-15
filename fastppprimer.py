@@ -149,7 +149,7 @@ class FastppPrimer(MasterPrimer):
         
         # This is the header for the .spec file:
         specheader = [
-            'bin', 'wl_low', 'wl_high', 'F' + str(objid), 'E' + str(objid)
+            'bin', 'wl_low', 'wl_up', 'F' + str(objid), 'E' + str(objid)
             ]
         
         # mega_arr is the array that will be saved to a .spec file:

@@ -92,9 +92,10 @@ class FastppRunner(MasterRunner):
                     # Remove file extension and create new file name:
                     fullname = self.paramfile + '-' + f.split('.')[0]
 
-                    self._param_changer(fullname, kwargs)
+                    self._param_changer(fullname, kwargs, includespec=True)
                     
                     # copy the .cat file with new file name:
+                    os.chdir(self._fdir)
                     newcat = shutil.copyfile(
                         self.paramfile + '.cat', 
                         fullname + '.cat'
@@ -105,7 +106,6 @@ class FastppRunner(MasterRunner):
                         self.paramfile + '.translate', 
                         fullname + '.translate'
                     )
-                    os.chdir(self._olddir)
 
                     # change self.cmd for each file fullname:
                     cmd = [self.programname, fullname + '.param']
@@ -115,21 +115,24 @@ class FastppRunner(MasterRunner):
                 # new .fout file:
                 grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
                 grouper.regrouper()
+                
+                os.chdir(self._olddir)
                 return True
             except Exception as e:
                 raise
         else:
             try:
-                self._param_changer(self.paramfile, kwargs)
+                self._param_changer(self.paramfile, kwargs, includespec=False)
                 
                 # make new .cat file:
                 self.primer.cat_maker(includephot=includephot)
                 self.runner(cmd)
                 return True
+
             except Exception as e:
                 raise
 
-    def _param_changer(self, filename, paramchanges):
+    def _param_changer(self, filename, paramchanges, includespec=True):
         """ Internal method used to create FAST++ .param file with necessary
             and provided changes.
 
@@ -139,6 +142,9 @@ class FastppRunner(MasterRunner):
 
             paramchanges (Dict[str]): This dict is generated from kwargs
                 given by the user for other .param paramters to change.
+
+            includespec (bool): Sets the .spec file name parameter in .param
+                file.  Default is True.
 
         Returns:
             bool: True if successful.
@@ -154,13 +160,21 @@ class FastppRunner(MasterRunner):
         paramdict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
     
         try:
-            # 'CATALOG' argument always needs to be changed:
-            paramdict['CATALOG'] = self.paramfile
 
-            # make changes to .param file specificied by kwargs
+            # Make changes to .param file specified by kwargs
             if paramchanges:
                 for key, value in paramchanges.items():
                     paramdict[key] = value
+
+            # 'CATALOG' argument always needs to be changed:
+            paramdict['CATALOG'] = self.paramfile
+
+            # Set correct spectra file name and settings.  Note that
+            # .spec file extension is not included:
+            if includespec:
+                paramdict['SPECTRUM'] = filename.split('.')[0]
+                paramdict['AUTO_SCALE'] = '0'
+                paramdict['APPLY_VDISP'] = '0'
             
             # change all .param values in new .param files specified
             # in kwargs:
