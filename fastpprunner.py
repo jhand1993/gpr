@@ -3,12 +3,10 @@ Runners should not move files explicitly.  All file movement
 should be done by primers and then called in the runner.
 """
 import shutil
-import subprocess
 import os
 
 import numpy as np 
 import fastppprimer
-import spectragrabber
 from master import MasterRunner
 
 

@@ -103,21 +103,18 @@ class GPRMaster:
         Returns:
             dumpdict (Dict): Dictionary loaded from json dump.
         """
-        try:
-            os.chdir(self._dumpdir)
+        os.chdir(self._dumpdir)
 
-            # remove '.' from dumpname is given:
-            if '.' in dumpname:
-                dumpname = dumpname.split('.')[0]
-            
-            # load dump dictionary from json file 'dumpname':
-            with open(dumpname + '.json', 'r') as f:
-                dumpdict = json.load(f)
+        # remove '.' from dumpname is given:
+        if '.' in dumpname:
+            dumpname = dumpname.split('.')[0]
+        
+        # load dump dictionary from json file 'dumpname':
+        with open(dumpname + '.json', 'r') as f:
+            dumpdict = json.load(f)
 
-            os.chdir(self._olddir)
-            return dumpdict
-        except Exception as e:
-            raise
+        os.chdir(self._olddir)
+        return dumpdict
 
         
 class MasterGrabber(GPRMaster):
@@ -154,52 +151,49 @@ class MasterGrabber(GPRMaster):
         localdata = glob.glob('*')
 
         # check to see if url is given as a list:
-        try:
-            if type(url) == list:
+        if type(url) == list:
 
-                # make sure that the url list is the same length as
-                # the filelist:
-                if len(url) != len(filelist):
-                    e = 'Url list and file list must be the same length.'
-                    raise Exception(e)
+            # make sure that the url list is the same length as
+            # the filelist:
+            if len(url) != len(filelist):
+                print('Url list and file list must be the same length.')
+                raise ValueError
 
-                for i in range(len(filelist)):
-                    # grab ith file and url:
-                    c_url = url[i]
-                    c_file = filelist[i]
+            for i in range(len(filelist)):
+                # grab ith file and url:
+                c_url = url[i]
+                c_file = filelist[i]
 
-                    # check and skip files that are already downloaded:
-                    if c_file in localdata:
-                        print('\'' + c_file + '\' already downloaded.')
+                # check and skip files that are already downloaded:
+                if c_file in localdata:
+                    print('\'' + c_file + '\' already downloaded.')
 
-                    # if they are not downloaded, then download:
-                    else:
-                        print('Downloading \'' + c_file + '\'...')
-                        r = requests.get(
-                            c_url + c_file,
-                            allow_redirects=True, stream=True
-                            )
-                        with open(c_file, 'wb') as newf:
-                            shutil.copyfileobj(r.raw, newf)
+                # if they are not downloaded, then download:
+                else:
+                    print('Downloading \'' + c_file + '\'...')
+                    r = requests.get(
+                        c_url + c_file,
+                        allow_redirects=True, stream=True
+                        )
+                    with open(c_file, 'wb') as newf:
+                        shutil.copyfileobj(r.raw, newf)
 
-            else:
-                for f in filelist:
-                    # check and skip files that are already downloaded:
-                    if f in localdata:
-                        print('\'' + f + '\' already downloaded.')
+        else:
+            for f in filelist:
+                # check and skip files that are already downloaded:
+                if f in localdata:
+                    print('\'' + f + '\' already downloaded.')
 
-                    # if they are not downloaded, then download:
-                    else:
-                        print('Downloading \'' + f + '\'...')
-                        r = requests.get(
-                            url + f,
-                            allow_redirects=True, stream=True
-                            )
-                        with open(f, 'wb') as newf:
-                            shutil.copyfileobj(r.raw, newf)
+                # if they are not downloaded, then download:
+                else:
+                    print('Downloading \'' + f + '\'...')
+                    r = requests.get(
+                        url + f,
+                        allow_redirects=True, stream=True
+                        )
+                    with open(f, 'wb') as newf:
+                        shutil.copyfileobj(r.raw, newf)
 
-        except Exception as e:
-            raise
         os.chdir(self._olddir)
         return True
         

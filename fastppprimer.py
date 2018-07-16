@@ -143,9 +143,7 @@ class FastppPrimer(MasterPrimer):
         objid = self.fo_dict[str(spectra.filename)]
 
         # This is a format array for saving array to file:
-        datafmt = [
-            '%i', '%1.2f', '%1.2f', '%1.2f', '%1.2f'
-            ]
+        datafmt = ['%i', '%1.2f', '%1.2f', '%1.2f', '%1.2f']
         
         # This is the header for the .spec file:
         specheader = [
@@ -327,12 +325,8 @@ class FastppPrimer(MasterPrimer):
         
         os.chdir(self._fdir)
 
-        try:
-            # read grabbed data:
-            df = pd.read_csv(filename, header=0, na_values='null')
-
-        except FileNotFoundError as e:
-            raise
+        # create dataframe fom input file:
+        df = pd.read_csv(filename, header=0, na_values='null')
         
         # this expression is used to grab the correct columns from df:
         filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
