@@ -30,7 +30,7 @@ class FastppRunner(MasterRunner):
 
         # specify the correct program name:
         if oldfast:
-            elf.programname = 'fast'
+            self.programname = 'fast'
         else:
             self.programname = 'fast++'
         
@@ -42,11 +42,15 @@ class FastppRunner(MasterRunner):
         
         # instantiate primer object as attribute:
         self.primer = fastppprimer.FastppPrimer()
-        
+
+        # load filename-objid dump:
+        self.fo_dict = self._dumploader(self._fname_obj_jd)
+
+    """
     def fastpp_runner(
         self, includephot=True, includespec=True, cmd=None, **kwargs
     ):
-        """ Runs FAST++
+         Runs FAST++
 
         Args:
             includephot (bool): If true, then photometry will be included when
@@ -67,7 +71,7 @@ class FastppRunner(MasterRunner):
 
             Returns:
                 bool: True if successful.        
-        """
+        
         # This is the default FAST++ command:
         if not cmd:
             cmd = [self.programname, self._fname + '.param']
@@ -78,114 +82,87 @@ class FastppRunner(MasterRunner):
 
         # if spectra are included, then loop through each object:
         if includespec:
-            try:
-                # prime data for FAST++:
-                self.primer.spec_looper()
-                self.primer.cat_maker(includephot=includephot)
 
-                # ftr : files to run:
-                self.ftrlist = self.primer.filelist
-                for f in self.ftrlist:
 
-                    # Remove file extension and create new file name:
-                    fullname = self.paramfile + '-' + f.split('.')[0]
+                # Remove file extension and create new file name:
+                fullname = self.paramfile + '-' + f.split('.')[0]
 
-                    self._param_changer(fullname, kwargs, includespec=True)
-                    
-                    # copy the .cat file with new file name:
-                    os.chdir(self._fdir)
-                    newcat = shutil.copyfile(
-                        self.paramfile + '.cat', 
-                        fullname + '.cat'
-                    )
+                # grab the objid from the filename:
+                objid = fo_dict[f]
 
-                    # copy the .translate file with new file name:
-                    newtranslate = shutil.copyfile(
-                        self.paramfile + '.translate', 
-                        fullname + '.translate'
-                    )
-
-                    # change self.cmd for each file fullname:
-                    cmd = [self.programname, fullname + '.param']
-                    self.runner(cmd)
-
-                # recombine each fast++ run on individual spectra into
-                # new .fout file:
-                grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
-                grouper.regrouper()
+                self._param_changer(fullname, kwargs, includespec=True)
                 
-                os.chdir(self._olddir)
-                return True
-            except Exception as e:
-                raise
-        else:
-            try:
-                self._param_changer(self.paramfile, kwargs, includespec=False)
-                
-                # make new .cat file:
-                self.primer.cat_maker(includephot=includephot)
+                # Make .cat file:
+                self.primer.cat_maker(
+                    objid=objid, catname=fullname, includephot=includephot
+                )
+
+                # copy the .translate file with new file name:
+                newtranslate = shutil.copyfile(
+                    self.paramfile + '.translate', 
+                    fullname + '.translate'
+                )
+
+                # change self.cmd for each file fullname:
+                cmd = [self.programname, fullname + '.param']
                 self.runner(cmd)
-                return True
 
-            except Exception as e:
-                raise
-
-    def _param_changer(self, filename, paramchanges, includespec=True):
-        """ Internal method used to create FAST++ .param file with necessary
-            and provided changes.
-
-        Args:
-            filename (str): The catalog name in 'paramdict' will be changed 
-                to the value of this filename.
-
-            paramchanges (Dict[str]): This dict is generated from kwargs
-                given by the user for other .param paramters to change.
-
-            includespec (bool): Sets the .spec file name parameter in .param
-                file.  Default is True.
-
-        Returns:
-            bool: True if successful.
-        """
-
-        # load .param data used by FAST++:
-        os.chdir(self._fdir)
-
-        # load .param data used by FAST++:
-        paramdata = np.loadtxt(filename + '.param', dtype=str) 
-
-        # grab .paramdata parameter:value pairs in dictionary:
-        paramdict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
-    
-        try:
-
-            # Make changes to .param file specified by kwargs
-            if paramchanges:
-                for key, value in paramchanges.items():
-                    paramdict[key] = value
-
-            # 'CATALOG' argument always needs to be changed:
-            paramdict['CATALOG'] = self.paramfile
-
-            # Set correct spectra file name and settings.  Note that
-            # .spec file extension is not included:
-            if includespec:
-                paramdict['SPECTRUM'] = filename.split('.')[0]
-                paramdict['AUTO_SCALE'] = '0'
-                paramdict['APPLY_VDISP'] = '0'
-            
-            # change all .param values in new .param files specified
-            # in kwargs:
-            with open(filename + '.param', 'w+') as f:
-                for key, value in paramdict.items():
-                    newline = key + ' = ' + value + '\n'
-                    f.write(newline)
+            # recombine each fast++ run on individual spectra into
+            # new .fout file:
+            grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
+            grouper.regrouper()
             
             os.chdir(self._olddir)
             return True
-        
-        except Exception as e:
-            raise
 
+        else:
+            # modify the parameters for .param file.
+            self._param_changer(self.paramfile, kwargs, includespec=False)
             
+            # make new .cat file:
+            self.primer.cat_maker(includephot=includephot)
+            self.runner(cmd)
+            return True
+    """
+    def fastpp_sp(transfile=None):
+        """ Runs FAST++ with spectra and photometry.
+        """
+
+        # Organize spectra data FAST++:
+        self.primer.spec_looper()
+
+        # ftr : files to run:
+        self.ftrlist = self.primer.filelist
+        for f in self.ftrlist:
+
+
+    def _fastpp_filemaker(self, fastfile, paramdict, specfile=None, transfile=None):
+        """ Creates files needed to run FAST++.
+        """
+
+        # Default value for objid is None:
+        objid = None
+
+        # Create .spec file:
+        if specfile:
+            objid = self.fo_dict[specfile]
+            specfile = transfile.split('.')[0]
+            shutil.copyfile(specfile + '.specfile', fastfile + '.translate')
+
+        # Create .translate file:
+        if transfile:
+            transfile = transfile.split('.')[0]
+            shutil.copyfile(transfile + '.translate', fastfile + '.translate')
+        else:
+            shutil.copyfile(fastfile + '.translate', fastfile + '.translate')
+
+        # Create new .param file:
+        with open(fastfile + '.param', 'w+') as f:
+            for key, value in paramdict.items():
+                newline = key + ' = ' + value + '\n'
+                f.write(newline)
+
+        # Create .cat file:
+        self.primer.cat_maker(objid=objid, catname=fastfile)
+        
 

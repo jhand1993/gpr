@@ -125,7 +125,7 @@ class MasterGrabber(GPRMaster):
         """
         super().__init__()
 
-    def web_grabber(self, url, datadir, filelist):
+    def web_grabber(self, url, datadir, filelist, redownload=False):
         """ This basically works like wget or curl.  
 
         Args:
@@ -137,6 +137,10 @@ class MasterGrabber(GPRMaster):
             
             filelist (List[str]): List of file names that are downloaded
                 from given url(s).
+
+            redownload (bool): If true, then spectra data files will be
+                redownloaded even if they already exist in the spectra data
+                directory.  Default is False.
 
         Returns:
             bool: True is successful.
@@ -164,8 +168,9 @@ class MasterGrabber(GPRMaster):
                 c_url = url[i]
                 c_file = filelist[i]
 
-                # check and skip files that are already downloaded:
-                if c_file in localdata:
+                # check and skip files that are already downloaded. If
+                # redownload is true, then this will be skipped:
+                if c_file in localdata and not redownload:
                     print('\'' + c_file + '\' already downloaded.')
 
                 # if they are not downloaded, then download:
@@ -186,7 +191,7 @@ class MasterGrabber(GPRMaster):
 
                 # if they are not downloaded, then download:
                 else:
-                    print('Downloading \'' + f + '\'...')
+                    print('Downloading \'' + f + '\' ...')
                     r = requests.get(
                         url + f,
                         allow_redirects=True, stream=True

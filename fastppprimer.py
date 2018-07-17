@@ -306,28 +306,72 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self._olddir)
         return f_fullnamelist
 
-    def cat_maker(self, filename=None, includephot=True):
+    def cat_maker(self, objid=None, catname=None, inputfile=None, includephot=True):
         """ This creates a .cat file used by FAST++ for photometry.
 
         Args:
-            filename (str): If specified, this is used as the photometric
-                data file to create a .cat file from.  Default is None.
+            objid (str or int): If provided, only the object identified by
+                'objid' will be used to create the new cat file.  Default is
+                None.
 
-            includephot (bool): If true, .cat file will include photometric
-                information.  Otherwise, only redshift will be included.
+            catname (str): If provided, the create .cat file will be named
+                <catname>.cat.  Default is None.
+
+            inputfile (str): This can be used to override the default input
+                data file <self._fname>.csv.  Default is None.
+
+            includephot (bool): If true, then photometry is added to .cat file.
                 Default is True.
+
+        Returns:
+            bool: True if successful.
         """
 
         # If 'filename' is None, then use default filename for grabbed
         # data:
-        if not filename:
-            filename = self._fname + '.csv'
+        if not inputfile:
+            inputfile = self._fname + '.csv'
+
+        if not objid:
+            catname = self._fname + '.cat'
+
+        # raise ValueError if objid and catname are both not None:
+        elif (not objid and catname) or (objid and not catname):
+            print('Problem with objid', objid, 'and catname', catname)
+            raise ValueError
         
+        # load data into dataframe:
         os.chdir(self._fdir)
+        df = pd.read_csv(catname, header=0, na_values='null')
 
         # create dataframe fom input file:
-        df = pd.read_csv(filename, header=0, na_values='null')
-        
+        if not objid:
+            newdf = self._cat_organizer(df)
+
+        else:
+            obj_df = df.loc[df['objID'] == str(objid)]
+            newdf = self._cat_organizer(obj_df)
+       
+        # Save the dataframe as a .csv.
+        newfilename = catname.split('.')[0] + '.cat'
+        newdf.to_csv(newfilename, sep='\t', index=False)
+        print(newfilename + ' saved in ' + str(self._fdir) + '.')
+
+        os.chdir(self._olddir)
+        return True
+
+    def _cat_organizer(self, df):
+        """ Used by cat_maker to organize input data into .cat file.
+
+        Args:
+            df (pandas.DataFrame): This dataframe is reorganized to match
+                required .cat file format.
+
+        Returns:
+            pandas.DataFrame: The modified dataframe that can be saved as
+                a .cat file.
+        """
+
         # this expression is used to grab the correct columns from df:
         filterexpression = r'\bobjID\b|\bspecObjID\b|\bz_spec\b|[E|F](_)[a-zA-Z]{1}'
 
@@ -360,15 +404,58 @@ class FastppPrimer(MasterPrimer):
                 newdf[col] = [self.nm_to_mj(x) for x in newdf[col]]
                 newdf[col] = newdf[col].round(decimals=3)
 
-        # Save the dataframe as a .csv.
-        newfilename = filename.split('.')[0] + '.cat'
-        newdf.to_csv(newfilename, sep='\t', index=False)
-        print(newfilename + ' saved in ' + str(self._fdir) + '.')
+        return newdf
 
+    def _param_changer(self, paramchanges, paramfile=None, includespec=True):
+        """ Internal method used to create FAST++ parameters in a dictionary
+            with necessary and provided changes.
+
+        Args:
+            paramchanges (Dict[str]): This dict is generated from kwargs
+                given by the user for other .param paramters to change.
+
+            paramfile (str): Name of the defualt .param file to load.  If
+                None, then self.paramfile is used.  Default is None.
+
+            includespec (bool): Sets the .spec file name parameter in .param
+                file.  Default is True.
+
+        Returns:
+            Dict[str]: Returns a dictionary of parameter: value pairs.
+        """
+
+        # load .param data used by FAST++:
+        os.chdir(self._fdir)
+
+        # set paramname if it is not given.
+        if not paramfile:
+            paramfile = self._fname
+
+        # load .param data used by FAST++:
+        paramdata = np.loadtxt(paramfile + '.param', dtype=str) 
+
+        # grab .paramdata parameter:value pairs in dictionary:
+        paramdict = dict(zip(paramdata[:, 0], paramdata[:, 2]))
+
+        # Make changes to .param file specified by kwargs
+        if paramchanges:
+            for key, value in paramchanges.items():
+                paramdict[key] = value
+
+        # 'CATALOG' argument always needs to be changed:
+        paramdict['CATALOG'] = self.paramfile
+
+        # Set correct spectra file name and settings.  Note that
+        # .spec file extension is not included:
+        if includespec:
+            paramdict['SPECTRUM'] = filename.split('.')[0]
+            paramdict['AUTO_SCALE'] = '0'
+            paramdict['APPLY_VDISP'] = '0'
+        
         os.chdir(self._olddir)
-        return True
+        return paramdict
 
-
+    
 class FastppFoutGrouper(MasterPrimer):
     """ This contains method to group .fout files into one composite file.
     """
@@ -447,6 +534,7 @@ class FastppFoutGrouper(MasterPrimer):
                     '.json and will be ignored.'
                 )
                 pass
+
             except Exception as e:
                 raise
 

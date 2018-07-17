@@ -107,22 +107,26 @@ class SdssSpectraGrabber(SpectraGrabber):
     """ Used for grabbing data (such as fits files) from SDSS SAS.  
     """
 
-    def __init__(self, specdatadir, url):
+    def __init__(self, specdatadir):
         """ Initializer method for class.
 
-        args:
+        Args:
             specdatadir (str): Spectra data directory that spectra data files
                 will be downloaed to.
-        
-            url (str): SAS url for downloading fits files.
         """
         
         super().__init__(specdatadir)
-        self.url = url
 
-    def sdss_spectra_grabber(self):
+    def sdss_spectra_grabber(self, url, redownload=False):
         """ Builds sdss spectra data file names from data file and downloads 
             cooresponding spectra files form SDSS.
+
+        Args:
+            url (str): SAS url for downloading fits files.
+
+            redownload (bool): If true, then spectra data files will be
+                redownloaded even if they already exist in the spectra data
+                directory.  Default is False.
 
         Returns:
             bool: True if successful.
@@ -149,10 +153,6 @@ class SdssSpectraGrabber(SpectraGrabber):
             specobjid = str(row['specObjID'])
             objid = str(row['objID'])
 
-            # create spectra data file name:
-            joinlist = ['spec', plate, mjd, fiberid]
-            specfile = '-'.join(joinlist) + '.fits'
-
             # skip objects with no spectra:
             if 'nan' in specobjid or int(mjd) <= 0:
                 pass
@@ -163,36 +163,44 @@ class SdssSpectraGrabber(SpectraGrabber):
                 newspecobjidlist.append(specobjid)
                 newobjidlist.append(objid)
 
-                # append spectra file name to specnamelist:
-                specfilelist.append(specfile)
-
                 # 'plate' and 'fiberid need zeroes added sometimes:
                 plate = plate.zfill(4)
                 fiberid = fiberid.zfill(4) 
+
+                # create spectra data file name:
+                joinlist = ['spec', plate, mjd, fiberid]
+                specfile = '-'.join(joinlist) + '.fits'
+
+                # append spectra file name to specnamelist:
+                specfilelist.append(specfile)
 
                 # for older spectra:
                 if int(plate) < 3006:
                     suburl = 'sdss/spectro/redux/26/spectra/'
 
                     # create url that is used to download file"
-                    url = self.url + suburl + plate + '/'
+                    fileurl = url + suburl + plate + '/'
                     sdsslist.append(specfile)
-                    sdssurllist.append(url)
+                    sdssurllist.append(fileurl)
 
                 # for newer spectra:
                 else:
                     suburl = 'eboss/spectro/redux/v5_10_0/spectra/'
 
                     # create url that is used to download file"
-                    url = self.url + suburl + plate + '/'
+                    fileurl = url + suburl + plate + '/'
                     ebosslist.append(specfile)
-                    ebossurllist.append(url)
+                    ebossurllist.append(fileurl)
         
         os.chdir(self._olddir)
 
         # grab the spectra data:
-        self.web_grabber(ebossurllist, self._specdatadir, ebosslist)
-        self.web_grabber(sdssurllist, self._specdatadir, sdsslist)
+        self.web_grabber(
+            ebossurllist, self._specdatadir, ebosslist, redownload=redownload
+        )
+        self.web_grabber(
+            sdssurllist, self._specdatadir, sdsslist, redownload=redownload
+        )
 
         # create dumps related filenames to specobjid and objid:
         self._dumpmaker(self._fname_spec_jd, specfilelist, newspecobjidlist)
