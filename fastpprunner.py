@@ -46,86 +46,18 @@ class FastppRunner(MasterRunner):
         # load filename-objid dump:
         self.fo_dict = self._dumploader(self._fname_obj_jd)
 
-    """
-    def fastpp_runner(
-        self, includephot=True, includespec=True, cmd=None, **kwargs
-    ):
-         Runs FAST++
+    def runfastpp_sp(transfile=None, cmd=None, **kwargs):
+        """ Runs FAST++ with spectra and photometry.
 
         Args:
-            includephot (bool): If true, then photometry will be included when
-                running FAST++.  Default is True.
+            transfile (str): A specific source .translate can be used
+                instead of the default.  Default is None.
 
-            includespec (bool): If true, then spectra data will be included when
-                running FAST++.  FAST++ will be ran on each object with spectra
-                individually and will ignore other objects.  Results of the
-                individual runs are then recombined.  Default is True.
+            cmd (str or List[str]): User can specify a custum terminal
+                that is used to run FAST++
 
-            cmd (str or List[str]): User can provide a custom terminal command
-                to run FAST++.  If cmd is a string, then it will be split into
-                a list of strings.  If cmd is None, then the command will be
-                'fast++ <paramfile>.param.  Default is None.
-
-            kwargs: User can specify other parameters to change in the in the
-                FAST++ .param file.
-
-            Returns:
-                bool: True if successful.        
-        
-        # This is the default FAST++ command:
-        if not cmd:
-            cmd = [self.programname, self._fname + '.param']
-
-        # if string is given as 'cmd', split it into a list:
-        elif cmd and type(cmd) == str:
-            cmd = cmd.split(' ')
-
-        # if spectra are included, then loop through each object:
-        if includespec:
-
-
-                # Remove file extension and create new file name:
-                fullname = self.paramfile + '-' + f.split('.')[0]
-
-                # grab the objid from the filename:
-                objid = fo_dict[f]
-
-                self._param_changer(fullname, kwargs, includespec=True)
-                
-                # Make .cat file:
-                self.primer.cat_maker(
-                    objid=objid, catname=fullname, includephot=includephot
-                )
-
-                # copy the .translate file with new file name:
-                newtranslate = shutil.copyfile(
-                    self.paramfile + '.translate', 
-                    fullname + '.translate'
-                )
-
-                # change self.cmd for each file fullname:
-                cmd = [self.programname, fullname + '.param']
-                self.runner(cmd)
-
-            # recombine each fast++ run on individual spectra into
-            # new .fout file:
-            grouper = fastppprimer.FastppFoutGrouper(foutdir='fout')
-            grouper.regrouper()
-            
-            os.chdir(self._olddir)
-            return True
-
-        else:
-            # modify the parameters for .param file.
-            self._param_changer(self.paramfile, kwargs, includespec=False)
-            
-            # make new .cat file:
-            self.primer.cat_maker(includephot=includephot)
-            self.runner(cmd)
-            return True
-    """
-    def fastpp_sp(transfile=None):
-        """ Runs FAST++ with spectra and photometry.
+            kwargs: Used to specify specific changes to be made to FAST++
+                paramter settings.
         """
 
         # Organize spectra data FAST++:
@@ -135,8 +67,68 @@ class FastppRunner(MasterRunner):
         self.ftrlist = self.primer.filelist
         for f in self.ftrlist:
 
+            # This will be the FAST++ file name:
+            specdatafname = f.split('.')[1]
+            fastfilename = specdatafname
 
-    def _fastpp_filemaker(self, fastfile, paramdict, specfile=None, transfile=None):
+            # Create param dictionary with changes:
+            paramdict = self.primer._param_changer(
+                kwargs, fastfilename, True, paramfile=self.paramfile 
+            )
+
+            # create files for FAST++:
+            self._fastpp_filemaker(
+                fastfilename, paramdict, 
+                specdatafname=specdatafname, transfile=transfile
+            )
+
+            # clean up or create cmd:
+            cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
+            
+            # Run FAST++:
+            self.runner(cmd)
+
+        # regroup the separate .fout files:
+        fastppprimer.FastppFoutGrouper.regrouper()
+
+        return True
+
+    def runfastpp_p(transfile=None, cmd=None, **kwargs):
+        """ Runs FAST++ with photometry only.
+
+        Args:
+            transfile (str): A specific source .translate can be used
+                instead of the default.  Default is None.
+
+            cmd (str or List[str]): User can specify a custum terminal
+                that is used to run FAST++
+
+            kwargs: Used to specify specific changes to be made to FAST++
+                paramter settings.
+        """
+            # This will be the FAST++ file name:
+            fastfilename = self.fname()
+
+            # Create param dictionary with changes:
+            paramdict = self.primer._param_changer(
+                kwargs, fastfilename, True, paramfile=self.paramfile 
+            )
+
+            # create files for FAST++:
+            self._fastpp_filemaker(
+                fastfilename, paramdict, 
+                specdatafname=specdatafname, transfile=transfile
+            )
+
+            # clean up or create cmd:
+            cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
+            
+            # Run FAST++:
+            self.runner(cmd)
+
+    def _fastpp_filemaker(
+        self, fastfilename, paramdict, specdatafname=None, transfile=None
+    ):
         """ Creates files needed to run FAST++.
         """
 
@@ -144,25 +136,50 @@ class FastppRunner(MasterRunner):
         objid = None
 
         # Create .spec file:
-        if specfile:
-            objid = self.fo_dict[specfile]
-            specfile = transfile.split('.')[0]
-            shutil.copyfile(specfile + '.specfile', fastfile + '.translate')
+        if specdatafname:
+            objid = self.fo_dict[specdatafname]
+            specdatafname = transfile.split('.')[0]
+            shutil.copyfile(specdatafname + '.specfile', fastfilename + '.translate')
 
         # Create .translate file:
         if transfile:
             transfile = transfile.split('.')[0]
-            shutil.copyfile(transfile + '.translate', fastfile + '.translate')
+            shutil.copyfile(transfile + '.translate', fastfilename + '.translate')
         else:
-            shutil.copyfile(fastfile + '.translate', fastfile + '.translate')
+            shutil.copyfile(fastfile + '.translate', fastfilename + '.translate')
 
         # Create new .param file:
-        with open(fastfile + '.param', 'w+') as f:
+        with open(fastfilename + '.param', 'w+') as f:
             for key, value in paramdict.items():
                 newline = key + ' = ' + value + '\n'
                 f.write(newline)
 
         # Create .cat file:
-        self.primer.cat_maker(objid=objid, catname=fastfile)
-        
+        self.primer.cat_maker(objid=objid, catname=fastfilename)
 
+    def _fastpp_cmd_cleaner(self, fastfilename, cmd=None):
+        """ This method is used to clean up a user-provided FAST++ command.
+
+        Args:
+            fastfilename (str): File name that FAST++ will look for.
+
+            cmd (str List[str]): Terminal command for running FAST++.  If it
+                is a string, then the command will be converted to a list.  If
+                cmd is None, then default FAST++ terminal command is used.
+                Default is None.
+
+        Returns:
+            List[str]: Command for use by runner method, and thus 
+                subprocess.Popen().
+        """
+        if not cmd:
+            return [self.programname, fastfilename.split('.')[0] + '.param']
+
+        elif type(cmd) == str:
+            cmd = cmd.split(' ')
+        
+        # get rid of .param file in custom command:
+        msk = ['.param' not in x for x in cmd]
+        cmd = [cmd[i] for i in range(len(msk)) if msk[i]]
+
+        return cmd

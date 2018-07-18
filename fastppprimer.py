@@ -264,7 +264,7 @@ class FastppPrimer(MasterPrimer):
         """ Creates .spec files for each fits file in attribute 'self.filelist'.
 
         Returns:
-            f_fullnamelist (List[str]): This list contains all the full names of
+            f_specnamelist (List[str]): This list contains all the full names of
                 the .spec files for each spectra file in the spectra file data
                 directory.
         """
@@ -291,31 +291,21 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self._fdir)
 
         # these lists are used to create a data dump:
-        f_fullnamelist = []
-        f_objidlist = []
         for f in self.spectralist:
 
             # Not sure why I used 'f' here, but whatever.
             f_fullname, f_objid = self.spec_maker(f)
-            f_fullnamelist.append(f_fullname)
-            f_objidlist.append(f_objid)
-
-        # make a dump for fullnames and object ID:
-        self._dumpmaker(self._fullname_obj_jd, f_fullnamelist, f_objidlist)
 
         os.chdir(self._olddir)
-        return f_fullnamelist
+        return f_specnamelist
 
-    def cat_maker(self, objid=None, catname=None, inputfile=None, includephot=True):
+    def cat_maker(self, objid=None, inputfile=None, includephot=True):
         """ This creates a .cat file used by FAST++ for photometry.
 
         Args:
             objid (str or int): If provided, only the object identified by
                 'objid' will be used to create the new cat file.  Default is
                 None.
-
-            catname (str): If provided, the create .cat file will be named
-                <catname>.cat.  Default is None.
 
             inputfile (str): This can be used to override the default input
                 data file <self._fname>.csv.  Default is None.
@@ -332,7 +322,7 @@ class FastppPrimer(MasterPrimer):
         if not inputfile:
             inputfile = self._fname + '.csv'
 
-        if not objid:
+            # Set the .cat file name:
             catname = self._fname + '.cat'
 
         # raise ValueError if objid and catname are both not None:
@@ -406,19 +396,24 @@ class FastppPrimer(MasterPrimer):
 
         return newdf
 
-    def _param_changer(self, paramchanges, paramfile=None, includespec=True):
+    def _param_changer(
+        self, paramchanges, fastfilename, includespec, paramfile=None 
+    ):
         """ Internal method used to create FAST++ parameters in a dictionary
             with necessary and provided changes.
 
         Args:
             paramchanges (Dict[str]): This dict is generated from kwargs
                 given by the user for other .param paramters to change.
-
-            paramfile (str): Name of the defualt .param file to load.  If
-                None, then self.paramfile is used.  Default is None.
+            
+            fastfilename (str): This is the file name that FAST++ will look for
+                when running.
 
             includespec (bool): Sets the .spec file name parameter in .param
-                file.  Default is True.
+                file.
+
+            paramfile (str): Name of the default .param file to load.  If
+                None, then self.paramfile is used.  Default is None.
 
         Returns:
             Dict[str]: Returns a dictionary of parameter: value pairs.
@@ -443,7 +438,7 @@ class FastppPrimer(MasterPrimer):
                 paramdict[key] = value
 
         # 'CATALOG' argument always needs to be changed:
-        paramdict['CATALOG'] = self.paramfile
+        paramdict['CATALOG'] = fastfilename
 
         # Set correct spectra file name and settings.  Note that
         # .spec file extension is not included:

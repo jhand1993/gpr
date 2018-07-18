@@ -59,7 +59,7 @@ class GPRMaster:
         self._specdatadir_jd = 'specdatadir-name'
         self._fname_spec_jd = 'filename-specObjID'
         self._fname_obj_jd = 'filename-objID'
-        self._fullname_obj_jd = 'fullname-objID'
+        self._specname_obj_jd = 'specname-objID'
 
     def _dumpmaker(self, dumpname, keys, values):
         """ Generic json dump creater.
