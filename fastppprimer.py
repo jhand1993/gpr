@@ -297,7 +297,7 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self._olddir)
         return True
 
-    def cat_maker(self, objid=None, inputfile=None, includephot=True):
+    def cat_maker(self, objid=None, inputfilename=None, includephot=True):
         """ This creates a .cat file used by FAST++ for photometry.
 
         Args:
@@ -317,27 +317,22 @@ class FastppPrimer(MasterPrimer):
 
         # If 'filename' is None, then use default filename for grabbed
         # data:
-        if not inputfile:
-            inputfile = self._fname + '.csv'
+        if not inputfilename:
+            inputfilename = self._fname + '.csv'
 
-            # Set the .cat file name:
-            catname = self._fname + '.cat'
-
-        # raise ValueError if objid and catname are both not None:
-        elif (not objid and catname) or (objid and not catname):
-            print('Problem with objid', objid, 'and catname', catname)
-            raise ValueError
+        # Set the .cat file name:
+        catname = self._fname + '.cat'
         
         # load data into dataframe:
         os.chdir(self._fdir)
-        df = pd.read_csv(catname, header=0, na_values='null')
+        df = pd.read_csv(inputfilename, header=0, na_values='null')
 
         # create dataframe fom input file:
         if not objid:
             newdf = self._cat_organizer(df)
 
         else:
-            obj_df = df.loc[df['objID'] == str(objid)]
+            obj_df = df.loc[df['objID'].values == int(objid)]
             newdf = self._cat_organizer(obj_df)
        
         # Save the dataframe as a .csv.
@@ -367,14 +362,11 @@ class FastppPrimer(MasterPrimer):
         df = df.filter(regex=filterexpression, axis=1)
         df = df.rename(columns={'objID': '#ID'})
         specobjid_df = df.loc[:, 'specObjID']
+        print(specobjid_df)
         df = df.drop('specObjID', axis=1)
         z_df = df.loc[:, 'z_spec']
         df = df.drop('z_spec', axis=1)
 
-        # changes the NaN values to 0:
-        for i in range(len(specobjid_df)):
-            if np.isnan(specobjid_df[i]):
-                specobjid_df[i] = 0.
         newdf = pd.concat([df, z_df, specobjid_df.astype(int)], axis=1)
 
         # for each column, check to ee if values need to be changed:
@@ -452,7 +444,7 @@ class FastppPrimer(MasterPrimer):
 class FastppFoutGrouper(MasterPrimer):
     """ This contains method to group .fout files into one composite file.
     """
-    def __init__(self, foutdir):
+    def __init__(self):
         super().__init__()
         """ Initializes instance of FastppFoutGrouper class.
         """

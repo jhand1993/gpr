@@ -84,6 +84,7 @@ class FastppRunner(MasterRunner):
 
             # clean up or create cmd:
             cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
+            print(cmd)
             
             # Run FAST++:
             self.runner(cmd)
@@ -176,7 +177,7 @@ class FastppRunner(MasterRunner):
         os.chdir(self._olddir)
 
         # Create .cat file:
-        self.primer.cat_maker(objid=objid, catname=fastfilename)
+        self.primer.cat_maker(objid=objid)
 
         return True
 

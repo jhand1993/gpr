@@ -8,4 +8,4 @@ grabber = spectragrabber.SdssSpectraGrabber(specdatadir=sdssspecdatadir)
 grabber.sdss_spectra_grabber(url=sdssroot)
 
 x = fastpprunner.FastppRunner()
-x.runfastpp_sp(LIBRARY='bc03', RESOLUTION='hr', IMF='sa', SFH='exp')
+x.runfastpp_sp(LIBRARY='bc03', RESOLUTION='hr', IMF='sa', SFH='exp')    
