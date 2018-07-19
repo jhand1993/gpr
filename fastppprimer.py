@@ -264,9 +264,7 @@ class FastppPrimer(MasterPrimer):
         """ Creates .spec files for each fits file in attribute 'self.filelist'.
 
         Returns:
-            f_specnamelist (List[str]): This list contains all the full names of
-                the .spec files for each spectra file in the spectra file data
-                directory.
+            bool: True if successful.
         """
         if not self.spectralist:
 
@@ -297,7 +295,7 @@ class FastppPrimer(MasterPrimer):
             f_fullname, f_objid = self.spec_maker(f)
 
         os.chdir(self._olddir)
-        return f_specnamelist
+        return True
 
     def cat_maker(self, objid=None, inputfile=None, includephot=True):
         """ This creates a .cat file used by FAST++ for photometry.
@@ -443,7 +441,7 @@ class FastppPrimer(MasterPrimer):
         # Set correct spectra file name and settings.  Note that
         # .spec file extension is not included:
         if includespec:
-            paramdict['SPECTRUM'] = filename.split('.')[0]
+            paramdict['SPECTRUM'] = fastfilename.split('.')[0]
             paramdict['AUTO_SCALE'] = '0'
             paramdict['APPLY_VDISP'] = '0'
         

@@ -46,8 +46,8 @@ class FastppRunner(MasterRunner):
         # load filename-objid dump:
         self.fo_dict = self._dumploader(self._fname_obj_jd)
 
-    def runfastpp_sp(transfile=None, cmd=None, **kwargs):
-        """ Runs FAST++ with spectra and photometry.
+    def runfastpp_sp(self, transfile=None, cmd=None, **kwargs):
+        """ Runs FAST++ with spectra data and photometry data.
 
         Args:
             transfile (str): A specific source .translate can be used
@@ -67,9 +67,9 @@ class FastppRunner(MasterRunner):
         self.ftrlist = self.primer.filelist
         for f in self.ftrlist:
 
-            # This will be the FAST++ file name:
-            specdatafname = f.split('.')[1]
-            fastfilename = specdatafname
+            # This will be the FAST++ file name (spec data name + fname):
+            fastfilename = self._fname + '-' + f.split('.')[0]
+            specfilename = f
 
             # Create param dictionary with changes:
             paramdict = self.primer._param_changer(
@@ -79,7 +79,7 @@ class FastppRunner(MasterRunner):
             # create files for FAST++:
             self._fastpp_filemaker(
                 fastfilename, paramdict, 
-                specdatafname=specdatafname, transfile=transfile
+                specfilename, transfile=transfile
             )
 
             # clean up or create cmd:
@@ -93,8 +93,8 @@ class FastppRunner(MasterRunner):
 
         return True
 
-    def runfastpp_p(transfile=None, cmd=None, **kwargs):
-        """ Runs FAST++ with photometry only.
+    def runfastpp_p(self, transfile=None, cmd=None, **kwargs):
+        """ Runs FAST++ with photometry data only.
 
         Args:
             transfile (str): A specific source .translate can be used
@@ -111,13 +111,13 @@ class FastppRunner(MasterRunner):
 
         # Create param dictionary with changes:
         paramdict = self.primer._param_changer(
-            kwargs, fastfilename, True, paramfile=self.paramfile 
+            kwargs, f, True, paramfile=self.paramfile 
         )
 
         # create files for FAST++:
         self._fastpp_filemaker(
             fastfilename, paramdict, 
-            specdatafname=specdatafname, transfile=transfile
+            False, transfile=transfile
         )
 
         # clean up or create cmd:
@@ -130,32 +130,55 @@ class FastppRunner(MasterRunner):
         self, fastfilename, paramdict, specdatafname=None, transfile=None
     ):
         """ Creates files needed to run FAST++.
+
+        Args:
+            fastfilename (str): This is thef file name that FAST++ will look
+                for.
+
+            paramdict (Dict[str]): This is a dictionary of FAST++ parameters and
+                values that will be saved as a .param file with file name
+                'fastfilename'.
+
+            specdatafname (str): If given, then a .spec file will be created
+                with name 'fastfilename'. Default is None.
+
+            transfile (str): If provided, <transfile>.transfile will be copied
+                to a new transfile <fastfilename>.transfile.  Default is None.
+
+        Returns:
+            bool: True if successful.
         """
 
         # Default value for objid is None:
         objid = None
+        
+        os.chdir(self._fdir)
 
         # Create .spec file:
         if specdatafname:
             objid = self.fo_dict[specdatafname]
-            specdatafname = transfile.split('.')[0]
-            shutil.copyfile(specdatafname + '.specfile', fastfilename + '.translate')
 
         # Create .translate file:
         if transfile:
             transfile = transfile.split('.')[0]
             shutil.copyfile(transfile + '.translate', fastfilename + '.translate')
+
+        # if no translate file is given, then use <self._fname>.translate:
         else:
-            shutil.copyfile(fastfile + '.translate', fastfilename + '.translate')
+            shutil.copyfile(self._fname + '.translate', fastfilename + '.translate')
 
         # Create new .param file:
         with open(fastfilename + '.param', 'w+') as f:
             for key, value in paramdict.items():
                 newline = key + ' = ' + value + '\n'
                 f.write(newline)
+        
+        os.chdir(self._olddir)
 
         # Create .cat file:
         self.primer.cat_maker(objid=objid, catname=fastfilename)
+
+        return True
 
     def _fastpp_cmd_cleaner(self, fastfilename, cmd=None):
         """ This method is used to clean up a user-provided FAST++ command.
