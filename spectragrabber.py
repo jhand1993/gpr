@@ -4,12 +4,8 @@ import shutil
 import json
 import glob
 
-import astropy.coordinates as apc
-import astropy.units as u
 import numpy as np
 import pandas as pd
-import tabulate as tb
-import requests
 from master import MasterGrabber
 
 
