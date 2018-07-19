@@ -39,10 +39,12 @@ class GPRMaster:
         configfilepath = masterconfig['file directory']
 
         # handle various file directory formats for Windows/Unix-like:
-        if '~' in configfilepath or '~user' in configfilepath:
+        if '~' in configfilepath:
             self._fdir = pl.Path(os.path.expanduser(configfilepath))
+
         elif not os.path.isdir(configfilepath):
             raise Exception(configfilepath + ' is not a valid directory.')
+
         else:
             self._fdir = pl.Path(configfilepath)
 
@@ -50,7 +52,7 @@ class GPRMaster:
         self._fdir = pl.Path(self._fdir)
 
         # make dump directory attribute:
-        self._dumpdir = self._fdir / masterconfig['dump subdirectory name']
+        self._dumpdir = self._fdir / masterconfig['dump subdirectory name'] 
 
         # make dump directory if they do not already exist:
         self._dumpdir.mkdir(exist_ok=True)

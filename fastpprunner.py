@@ -106,25 +106,25 @@ class FastppRunner(MasterRunner):
             kwargs: Used to specify specific changes to be made to FAST++
                 paramter settings.
         """
-            # This will be the FAST++ file name:
-            fastfilename = self.fname()
+        # This will be the FAST++ file name:
+        fastfilename = self._fname
 
-            # Create param dictionary with changes:
-            paramdict = self.primer._param_changer(
-                kwargs, fastfilename, True, paramfile=self.paramfile 
-            )
+        # Create param dictionary with changes:
+        paramdict = self.primer._param_changer(
+            kwargs, fastfilename, True, paramfile=self.paramfile 
+        )
 
-            # create files for FAST++:
-            self._fastpp_filemaker(
-                fastfilename, paramdict, 
-                specdatafname=specdatafname, transfile=transfile
-            )
+        # create files for FAST++:
+        self._fastpp_filemaker(
+            fastfilename, paramdict, 
+            specdatafname=specdatafname, transfile=transfile
+        )
 
-            # clean up or create cmd:
-            cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
-            
-            # Run FAST++:
-            self.runner(cmd)
+        # clean up or create cmd:
+        cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
+        
+        # Run FAST++:
+        self.runner(cmd)
 
     def _fastpp_filemaker(
         self, fastfilename, paramdict, specdatafname=None, transfile=None

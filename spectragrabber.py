@@ -79,16 +79,10 @@ class SpectraGrabber(MasterGrabber):
             else:
                 # tell them to use a different ext...
                 raise Exception('Invalid file extension.')
-            
-            required_columns = set(
-                'mjd', 'plate', 'fiberID', 'specObjID', 'objID'
-            )
 
-            if not set(self.df.columns).issuperset(required_columns):
-
-                # Raise an error if necessary columns do not exist:
-                print('Necessary columns not found in grabbed data.')
-                raise KeyError
+        # Make the dataframe columns lowercase:
+        self.df.columns = [str(col).lower() for col in list(self.df.columns)]
+        print(self.df.columns)
         
         os.chdir(self._olddir)
 
@@ -117,12 +111,29 @@ class SdssSpectraGrabber(SpectraGrabber):
         
         super().__init__(specdatadir)
 
-    def sdss_spectra_grabber(self, url, redownload=False):
+    def sdss_spectra_grabber(
+        self, url, 
+        specidcol=None, photoidcol=None, include_photoid=True, redownload=False
+    ):
         """ Builds sdss spectra data file names from data file and downloads 
             cooresponding spectra files form SDSS.
 
         Args:
             url (str): SAS url for downloading fits files.
+
+            specidcol (str): If provided, this string represents the spectra data
+                column that uniquely idenfifies the object.  If None, then the column
+                name will be set to 'specObjID'. Default is None.
+
+            photoidcol (str): Similar to specidcol argument, but instead should be
+                the column that uniquely identifies the photometric data of the object.
+                If None, then column name will be 'objID'.  Default is None.
+
+            include_photoid (bool): If False, then the photometry data identification
+                column is ignored (even if explicitly provided).  The json dump
+                relating photometric identifier to the spectra data file name will
+                not be created, which means the resulting downloaded data cannot be
+                used with the FastppPrimer class.  Default is True.
 
             redownload (bool): If true, then spectra data files will be
                 redownloaded even if they already exist in the spectra data
@@ -131,6 +142,20 @@ class SdssSpectraGrabber(SpectraGrabber):
         Returns:
             bool: True if successful.
         """
+
+        # Set the spectra object ID column name:
+        if specidcol:
+            specobjidcol = specidcol.lower()
+        
+        else:
+            specobjidcol = 'specobjid'
+
+        # Set the object ID column name
+        if photoidcol and include_photoid:
+            objidcol = photoidcol.lower()
+
+        else:
+            objidcol = 'objid'
 
         # used to store separate file/url names:
         ebosslist = []
@@ -149,9 +174,10 @@ class SdssSpectraGrabber(SpectraGrabber):
             # Grab the data from each row that will be needed:
             mjd = str(row['mjd'])
             plate = str(row['plate'])
-            fiberid = str(row['fiberID'])
-            specobjid = str(row['specObjID'])
-            objid = str(row['objID'])
+            fiberid = str(row['fiberid'])
+            specobjid = str(row[specobjidcol])
+            if include_photoid:
+                objid = str(row[objidcol])
 
             # skip objects with no spectra:
             if 'nan' in specobjid or int(mjd) <= 0:
@@ -161,7 +187,8 @@ class SdssSpectraGrabber(SpectraGrabber):
                 # Add valid objid and specobjid to their respetive new list so
                 # that the correct identifiers are provided for each spectra:
                 newspecobjidlist.append(specobjid)
-                newobjidlist.append(objid)
+                if include_photoid:
+                    newobjidlist.append(objid)
 
                 # 'plate' and 'fiberid need zeroes added sometimes:
                 plate = plate.zfill(4)
@@ -204,6 +231,9 @@ class SdssSpectraGrabber(SpectraGrabber):
 
         # create dumps related filenames to specobjid and objid:
         self._dumpmaker(self._fname_spec_jd, specfilelist, newspecobjidlist)
-        self._dumpmaker(self._fname_obj_jd, specfilelist, newobjidlist)
+
+        # only include objid dump if requested:
+        if include_photoid:
+            self._dumpmaker(self._fname_obj_jd, specfilelist, newobjidlist)
         
         return True
