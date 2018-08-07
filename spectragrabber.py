@@ -78,7 +78,6 @@ class SpectraGrabber(MasterGrabber):
 
         # Make the dataframe columns lowercase:
         self.df.columns = [str(col).lower() for col in list(self.df.columns)]
-        print(self.df.columns)
         
         os.chdir(self._olddir)
 
@@ -105,6 +104,8 @@ class SdssSpectraGrabber(SpectraGrabber):
                 will be downloaed to.
         """
         
+        if self._specext != 'fits':
+            raise Exception('SDSS spectra data is saved in fits file.')
         super().__init__(specdatadir)
 
     def sdss_spectra_grabber(
@@ -192,7 +193,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                 # create spectra data file name:
                 joinlist = ['spec', plate, mjd, fiberid]
-                specfile = '-'.join(joinlist) + '.fits'
+                specfile = '-'.join(joinlist)
 
                 # append spectra file name to specnamelist:
                 specfilelist.append(specfile)
@@ -203,7 +204,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                     # create url that is used to download file"
                     fileurl = url + suburl + plate + '/'
-                    sdsslist.append(specfile)
+                    sdsslist.append(specfile + self._specext)
                     sdssurllist.append(fileurl)
 
                 # for newer spectra:
@@ -212,7 +213,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                     # create url that is used to download file"
                     fileurl = url + suburl + plate + '/'
-                    ebosslist.append(specfile)
+                    ebosslist.append(specfile + self._specext)
                     ebossurllist.append(fileurl)
         
         os.chdir(self._olddir)

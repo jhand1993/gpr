@@ -43,6 +43,9 @@ class FastppRunner(MasterRunner):
         # instantiate primer object as attribute:
         self.primer = fastppprimer.FastppPrimer()
 
+        # instantiate a regrouper object:
+        self.regrouper = fastppprimer.FastppFoutGrouper()
+
         # load filename-objid dump:
         self.fo_dict = self._dumploader(self._fname_obj_jd)
 
@@ -67,10 +70,13 @@ class FastppRunner(MasterRunner):
         self.ftrlist = self.primer.filelist
         for f in self.ftrlist:
 
+            # reset cmd variable:
+            fcmd = cmd
+
             # This will be the FAST++ file name (spec data name + fname):
             fastfilename = self._fname + '-' + f.split('.')[0]
             specfilename = f
-
+            
             # Create param dictionary with changes:
             paramdict = self.primer._param_changer(
                 kwargs, fastfilename, True, paramfile=self.paramfile 
@@ -83,14 +89,13 @@ class FastppRunner(MasterRunner):
             )
 
             # clean up or create cmd:
-            cmd = self._fastpp_cmd_cleaner(fastfilename, cmd=cmd)
-            print(cmd)
-            
+            fcmd = self._fastpp_cmd_cleaner(fastfilename, cmd=fcmd)
+                        
             # Run FAST++:
-            self.runner(cmd)
+            self.runner(fcmd)
 
         # regroup the separate .fout files:
-        fastppprimer.FastppFoutGrouper.regrouper()
+        self.regrouper.regrouper()
 
         return True
 
@@ -151,13 +156,8 @@ class FastppRunner(MasterRunner):
         """
 
         # Default value for objid is None:
-        objid = None
         
         os.chdir(self._fdir)
-
-        # Create .spec file:
-        if specdatafname:
-            objid = self.fo_dict[specdatafname]
 
         # Create .translate file:
         if transfile:
@@ -177,7 +177,7 @@ class FastppRunner(MasterRunner):
         os.chdir(self._olddir)
 
         # Create .cat file:
-        self.primer.cat_maker(objid=objid)
+        self.primer.cat_maker(specdatafname=specdatafname)
 
         return True
 
@@ -203,7 +203,7 @@ class FastppRunner(MasterRunner):
             cmd = cmd.split(' ')
         
         # get rid of .param file in custom command:
-        msk = ['.param' not in x for x in cmd]
-        cmd = [cmd[i] for i in range(len(msk)) if msk[i]]
+        # msk = ['.param' not in x for x in cmd]
+        # cmd = [cmd[i] for i in range(len(msk)) if msk[i]]
 
         return cmd

@@ -297,16 +297,16 @@ class FastppPrimer(MasterPrimer):
         os.chdir(self._olddir)
         return True
 
-    def cat_maker(self, objid=None, inputfilename=None, includephot=True):
+    def cat_maker(self, inputfilename=None, specdatafname=None, includephot=True):
         """ This creates a .cat file used by FAST++ for photometry.
 
         Args:
-            objid (str or int): If provided, only the object identified by
-                'objid' will be used to create the new cat file.  Default is
-                None.
 
-            inputfile (str): This can be used to override the default input
+            inputfilename (str): This can be used to override the default input
                 data file <self._fname>.csv.  Default is None.
+
+            specdatafname (str): This is the optional spectra data file name. This
+                is used to create a catalog for said spectra file. Default is None.
 
             includephot (bool): If true, then photometry is added to .cat file.
                 Default is True.
@@ -315,13 +315,22 @@ class FastppPrimer(MasterPrimer):
             bool: True if successful.
         """
 
-        # If 'filename' is None, then use default filename for grabbed
-        # data:
+        # If 'filename' is None, then use default filename for grabbeddata:
         if not inputfilename:
             inputfilename = self._fname + '.csv'
 
         # Set the .cat file name:
-        catname = self._fname + '.cat'
+        if not specdatafname:
+            catname = self._fname + '.cat'
+
+            # Default object ID to None:
+            objid = None
+
+        else:
+            catname = self._fname + '-' + specdatafname.split('.')[0] + '.cat'
+
+            # Grab the object ID from the spectra file
+            objid = self.fo_dict[specdatafname]
         
         # load data into dataframe:
         os.chdir(self._fdir)
@@ -362,7 +371,6 @@ class FastppPrimer(MasterPrimer):
         df = df.filter(regex=filterexpression, axis=1)
         df = df.rename(columns={'objID': '#ID'})
         specobjid_df = df.loc[:, 'specObjID']
-        print(specobjid_df)
         df = df.drop('specObjID', axis=1)
         z_df = df.loc[:, 'z_spec']
         df = df.drop('z_spec', axis=1)
@@ -444,10 +452,11 @@ class FastppPrimer(MasterPrimer):
 class FastppFoutGrouper(MasterPrimer):
     """ This contains method to group .fout files into one composite file.
     """
+
     def __init__(self):
-        super().__init__()
         """ Initializes instance of FastppFoutGrouper class.
         """
+        super().__init__()
 
     def regrouper(self):
         """
@@ -460,11 +469,11 @@ class FastppFoutGrouper(MasterPrimer):
 
         # load fullname_obj dump.  Raise error if dump does not exist:
         try:
-            self.fno_dict = self._dumploader(self._fullname_obj_jd)
+            self.fno_dict = self._dumploader(self._fname_obj_jd)
         
         except Exception as e:
-            message = 'Have you created .spec files for spectra data?'
-            raise e(message)
+            print('Have you created .spec files for spectra data?')
+            raise e
 
         # grab all .fout files created by fast++:
         os.chdir(self._fdir)
@@ -484,10 +493,12 @@ class FastppFoutGrouper(MasterPrimer):
         for fout in foutlist:
             try:
                 # grab the objid from file name:
-                objid = self.fno_dict[fout]
+                fout_split = fout.split('-', 1)[1] + self._specext
+                objid = self.fno_dict[fout_split]
 
                 with open(fout + '.fout', 'r') as f:
                     while True:
+
                         row = f.readline()
 
                         # just in case some rows have a newline while 
@@ -514,10 +525,11 @@ class FastppFoutGrouper(MasterPrimer):
             # if .fout file is not found in json dump, then it is
             # ignored:
             except KeyError:
-                print(
-                    fout + ' not found in ' + self._fullname_obj_jd +
-                    '.json and will be ignored.'
-                )
+                print(fout + ' not found and will be ignored.')
+                pass
+
+            except IndexError:
+                print(fout + ' will be ignored.')
                 pass
 
             except Exception as e:

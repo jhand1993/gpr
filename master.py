@@ -32,11 +32,11 @@ class GPRMaster:
 
         # load configuration data from master configuration:
         with open('masterconfig.json') as f:
-            masterconfig = json.load(f)
+            self._masterconfig = json.load(f)
 
         os.chdir(self._olddir)
-        self._fname = masterconfig['file name']
-        configfilepath = masterconfig['file directory']
+        self._fname = self._masterconfig['file name']
+        configfilepath = self._masterconfig['file directory']
 
         # handle various file directory formats for Windows/Unix-like:
         if '~' in configfilepath:
@@ -48,11 +48,27 @@ class GPRMaster:
         else:
             self._fdir = pl.Path(configfilepath)
 
+        # Determine spectra data file type:
+        if 'spectra data file type' in self._masterconfig:
+
+            # check to see if spec file type is not blank:
+            if len(self._masterconfig['spectra data file type']) == 0:
+                self._specext = 'fits'
+
+            # default to fits file otherwise:
+            else:
+                self._specext = self._masterconfig['spectra data file type']
+
+        # default to fits file otherwise:
+        else:
+            self._specext = 'fits'
+
+
         # set file directory and dump directory as attributes:
         self._fdir = pl.Path(self._fdir)
 
         # make dump directory attribute:
-        self._dumpdir = self._fdir / masterconfig['dump subdirectory name'] 
+        self._dumpdir = self._fdir / self._masterconfig['dump subdirectory name'] 
 
         # make dump directory if they do not already exist:
         self._dumpdir.mkdir(exist_ok=True)
@@ -117,6 +133,21 @@ class GPRMaster:
 
         os.chdir(self._olddir)
         return dumpdict
+
+    def _dumpinverter(self, dump):
+        """ Tries to swap dump dictionary keys and values.
+
+        Args:
+            dump (Dict[str]): Loaded json dump that is 'inverted' and
+                returned as a new dictionary.
+
+        Returns:
+            dict[str]: New dictionary of inverted keys: values.
+        """
+        newkeys = list(dump.values())
+        newvalues = list(dump.keys())
+
+        return dict(zip(newkeys, newvalues))
 
         
 class MasterGrabber(GPRMaster):
