@@ -16,7 +16,6 @@ from master import MasterPrimer
 
 class SpectraData(MasterPrimer):
     """ Serves as a spectra object.
-
     """
     def __init__(self, filename):
         """ Creates instance of spectra file 'filename'.
@@ -26,34 +25,41 @@ class SpectraData(MasterPrimer):
                 into instantiated object.
         """
         super().__init__()
+
         self.filename = filename
-        try:
-            # Grab and set spectra data path from dump:
-            specdatadir = self._dumploader(
-                self._specdatadir_jd
-            )[self._specdatadir_jd]
-            specdatadir = pl.Path(self._fdir) / specdatadir
-            os.chdir(specdatadir)
 
-            # empty spectradata array for later use:
-            self.spectradata = []
+        # Grab and set spectra data path from dump:
+        specdatadir = self._dumploader(
+            self._specdatadir_jd
+        )[self._specdatadir_jd]
+        specdatadir = pl.Path(self._fdir) / specdatadir
+        os.chdir(specdatadir)
 
-            # Grab the fits data (which is a list of tuples)
-            # and store as a 2D array:
-            print('Loading', filename, '...')
+        # empty spectradata array for later use:
+        self.spectradata = []
+
+        # Grab the fits data (which is a list of tuples)
+        # and store as a 2D array:
+        print('Loading', filename + '...')
+        
+        # Check to see if extension needs to be added
+        if '.' in self.filename:
             self.fitsobj = fits.open(self.filename)
-            list_of_tuples = list(self.fitsobj[1].data)
-            self.fitsarr = np.array([list(x) for x in list_of_tuples])
 
-            # converted to Angstroms
-            self.wavelength = 10 ** (np.copy(self.fitsarr[:, 1]))
-            self.flux = np.copy(self.fitsarr[:, 0])
+        else:
+            fnameplusext = self.filename + '.' + self._specext
+            self.fitsobj = fits.open(fnameplusext)
+        
+        list_of_tuples = list(self.fitsobj[1].data)
+        self.fitsarr = np.array([list(x) for x in list_of_tuples])
 
-            # converted to error from inverse variance
-            self.fluxerr = 1 / np.sqrt(np.copy(self.fitsarr[:, 2])) 
-            os.chdir(self._olddir)
-        except Exception as e:
-            raise
+        # converted to Angstroms:
+        self.wavelength = 10 ** (np.copy(self.fitsarr[:, 1]))
+        self.flux = np.copy(self.fitsarr[:, 0])
+
+        # converted to error from inverse variance:
+        self.fluxerr = 1 / np.sqrt(np.copy(self.fitsarr[:, 2])) 
+        os.chdir(self._olddir)
 
 
 class FastppPrimer(MasterPrimer):
@@ -78,11 +84,11 @@ class FastppPrimer(MasterPrimer):
     def spec_maker(
         self, spectra, 
         customfullname=None, 
-        binsize=10, lambdastep=0.5, lambdarange=(3800., 9000.)
+        binsize=100, lambdastep=0.5, lambdarange=(3800., 9000.)
     ):
         """ Makes a .spec for the spectra object refined FAST++ format.
 
-        Attributes:
+        Args:
             spectra (Spectra[obj]): Must be an instance of Spectra class.
                 Attributes of this class are used to create an array
                 that bins flux/flux error data into correct wavelength
@@ -273,10 +279,12 @@ class FastppPrimer(MasterPrimer):
                 self.filelist = list(
                     self._dumploader(self._fname_obj_jd).keys()
                 )
-
+                
                 # Instantiate all spectra data files listed in self.filelist.
                 # This is the slowest part of the pipeline by far:
-                self.spectralist = [SpectraData(f) for f in self.filelist]
+                self.spectralist = [
+                    SpectraData(f) for f in self.filelist
+                ]
             
             # raise an error if dumps do not exist:
             except AttributeError as e:
@@ -469,7 +477,7 @@ class FastppFoutGrouper(MasterPrimer):
 
         # load fullname_obj dump.  Raise error if dump does not exist:
         try:
-            self.fno_dict = self._dumploader(self._fname_obj_jd)
+            self.fo_dict = self._dumploader(self._fname_obj_jd)
         
         except Exception as e:
             print('Have you created .spec files for spectra data?')
@@ -493,8 +501,8 @@ class FastppFoutGrouper(MasterPrimer):
         for fout in foutlist:
             try:
                 # grab the objid from file name:
-                fout_split = fout.split('-', 1)[1] + self._specext
-                objid = self.fno_dict[fout_split]
+                fout_split = fout.split('-', 1)[1]
+                objid = self.fo_dict[fout_split]
 
                 with open(fout + '.fout', 'r') as f:
                     while True:
@@ -525,11 +533,13 @@ class FastppFoutGrouper(MasterPrimer):
             # if .fout file is not found in json dump, then it is
             # ignored:
             except KeyError:
-                print(fout + ' not found and will be ignored.')
+                print('KeyError:')
+                print(fout + '.fout not found and will be ignored.')
                 pass
 
             except IndexError:
-                print(fout + ' will be ignored.')
+                print('IndexError:')
+                print(fout + '.fout will be ignored.')
                 pass
 
             except Exception as e:

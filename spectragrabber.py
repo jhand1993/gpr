@@ -103,10 +103,9 @@ class SdssSpectraGrabber(SpectraGrabber):
             specdatadir (str): Spectra data directory that spectra data files
                 will be downloaed to.
         """
-        
+        super().__init__(specdatadir)
         if self._specext != 'fits':
             raise Exception('SDSS spectra data is saved in fits file.')
-        super().__init__(specdatadir)
 
     def sdss_spectra_grabber(
         self, url, 
@@ -204,7 +203,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                     # create url that is used to download file"
                     fileurl = url + suburl + plate + '/'
-                    sdsslist.append(specfile + self._specext)
+                    sdsslist.append(specfile + '.' + self._specext)
                     sdssurllist.append(fileurl)
 
                 # for newer spectra:
@@ -213,7 +212,7 @@ class SdssSpectraGrabber(SpectraGrabber):
 
                     # create url that is used to download file"
                     fileurl = url + suburl + plate + '/'
-                    ebosslist.append(specfile + self._specext)
+                    ebosslist.append(specfile + '.' + self._specext)
                     ebossurllist.append(fileurl)
         
         os.chdir(self._olddir)
